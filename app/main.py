@@ -83,9 +83,18 @@ def _compute_below_threshold(data: StudentInput):
 @app.post("/predict", response_model=PredictionOutput)
 def predict(data: StudentInput):
     logger.info(f"Requête reçue : {data.model_dump()}")
-    pipeline = pipeline_state["pipeline"]
-
-    row = pd.DataFrame([[getattr(data, col) for col in FEATURE_ORDER]], columns=FEATURE_ORDER)
+    try:
+        pipeline = pipeline_state["pipeline"]
+        row = pd.DataFrame(
+            [[getattr(data, col) for col in FEATURE_ORDER]],
+            columns=FEATURE_ORDER,
+        )
+    except Exception as e:
+        logger.exception("Échec de construction des données de prédiction")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Échec de construction des données de prédiction : {e}",
+        )
 
     try:
         raw_prediction = pipeline.predict(row)[0]

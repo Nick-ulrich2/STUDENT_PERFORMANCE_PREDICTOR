@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
 class StudentInput(BaseModel):
+
+    model_config = ConfigDict(extra="forbid")
 
     Attendance: float = Field(
         ..., ge=0, le=100,
@@ -18,15 +20,17 @@ class StudentInput(BaseModel):
         description="Score obtenu lors de l'évaluation précédente (0-100)."
     )
     Tutoring_Sessions: int = Field(
-        ..., ge=0, le=8, 
-        description="Nombre de séances de soutien scolaire suivies. "
-                    "Borné à la plage observée dans les données d'entraînement."
+        ..., ge=0, le=8,
+        description="Nombre de séances de tutorat, entier dans la plage observée (0-8)."
     )
     Access_to_Resources: Literal["Low", "Medium", "High"] = Field(
-        ..., description="Niveau d'accès de l'étudiant aux ressources pédagogiques."
+    ..., description="Niveau d'accès de l'étudiant aux ressources pédagogiques "
+                    "(manuels, internet, matériel). Catégorie utilisée telle "
+                    "qu'observée dans les données d'entraînement."
     )
     Parental_Involvement: Literal["Low", "Medium", "High"] = Field(
-        ..., description="Niveau d'implication des parents dans la scolarité."
+    ..., description="Niveau d'implication des parents dans le suivi scolaire "
+                    "de l'étudiant, tel que déclaré dans le dataset source."
     )
 
 
