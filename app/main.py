@@ -55,17 +55,24 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    pipeline = pipeline_state["pipeline"]
+    pipeline = pipeline_state.get("pipeline")
+    if pipeline is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Le modèle n'est pas encore chargé. Le serveur démarre peut-être encore."
+        )
     model = pipeline.named_steps["model"]
     return {"model_name": type(model).__name__, "features": FEATURE_ORDER}
 
 
-def _extract_top_features(model, feature_names):
+def _extract_sorted_coefficients(model, feature_names, top_n: int | None = None):
     coefs = np.asarray(model.coef_, dtype=float).ravel()
     if len(coefs) != len(feature_names):
         raise ValueError("Nombre de coefficients incompatible avec les features.")
     pairs = list(zip(feature_names, [round(float(c), 4) for c in coefs]))
     pairs.sort(key=lambda x: abs(x[1]), reverse=True)
+    if top_n is not None:
+        pairs = pairs[:top_n]
     return dict(pairs)
 
 
@@ -75,7 +82,7 @@ def _compute_below_threshold(data: StudentInput):
 
 @app.post("/predict", response_model=PredictionOutput)
 def predict(data: StudentInput):
-    logger.info("Requête /predict reçue")
+    logger.info(f"Requête reçue : {data.model_dump()}")
     pipeline = pipeline_state["pipeline"]
 
     row = pd.DataFrame([[getattr(data, col) for col in FEATURE_ORDER]], columns=FEATURE_ORDER)
@@ -89,7 +96,7 @@ def predict(data: StudentInput):
     predicted_score = float(np.clip(raw_prediction, 0, 100))
 
     model = pipeline.named_steps["model"]
-    top_features = _extract_top_features(model, FEATURE_ORDER)
+    top_features = _extract_sorted_coefficients(model, FEATURE_ORDER, top_n=5)
     below_threshold = _compute_below_threshold(data)
 
     return PredictionOutput(
