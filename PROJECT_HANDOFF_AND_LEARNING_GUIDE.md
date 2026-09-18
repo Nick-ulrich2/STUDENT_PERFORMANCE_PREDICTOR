@@ -12,10 +12,10 @@ Student Performance Predictor est un projet de regression supervisée qui estime
 - un notebook d'exploration, de selection de variables, d'entrainement et d'evaluation ;
 - un pipeline scikit-learn Ridge serialize avec joblib ;
 - une API FastAPI exposant une prediction ;
-- des schemas Pydantic et quatre tests d'API ;
+- des schemas Pydantic et onze tests d'API ;
 - aucune base de donnees, aucun frontend versionne, aucune migration et aucun deploiement.
 
-La decision fonctionnelle est maintenant actee : le MVP comporte une authentification reelle, un historique personnel et deux roles, `student` et `admin`. La persistance cible est Supabase/PostgreSQL avec Supabase Auth et RLS ; aucune implementation de base n'est encore connectee.
+La decision fonctionnelle est maintenant actee : le MVP comportera une authentification reelle, un historique personnel et deux roles, `student` et `admin`. La persistance cible est Supabase/PostgreSQL avec Supabase Auth et RLS. La verification JWT et les gardes de role sont preparees cote backend, mais Supabase et l'historique ne sont pas encore connectes.
 
 ## 2. Business Problem
 
@@ -29,7 +29,7 @@ Le public cible n'est pas explicitement documente. Les utilisateurs plausibles s
 
 Inclus : prediction de `Exam_Score` a partir de six variables, validation Pydantic, chargement d'un pipeline local, retour du modele, de cinq coefficients et de seuils d'alerte simples. Les contrats prepares `/predictions`, `/predictions/me` et `/admin/predictions` exigent deja un JWT verifie, mais retournent 501 sans Supabase.
 
-Hors perimetre actuellement verifie : authentification, gestion de comptes, identite persistante d'un etudiant, stockage d'une prediction, suivi longitudinal, frontend versionne, entrainement en production, monitoring, deploiement et gestion de consentement.
+Non encore implemente : connexion reelle a Supabase Auth, gestion persistante des comptes et profils, stockage d'une prediction, suivi longitudinal, frontend versionne, entrainement en production, monitoring, deploiement et gestion de consentement. La verification JWT et la distinction `student/admin` sont preparees dans l'API, sans persistance reelle.
 
 ## 3. Current Project Status
 
@@ -38,12 +38,12 @@ Hors perimetre actuellement verifie : authentification, gestion de comptes, iden
 | Analyse exploratoire et preparation | `notebooks/data_science.ipynb`, `data/SPP.csv` | ✅ Termine pour le notebook | Analyse du dataset, split, selection de variables, entrainement et evaluation. Le notebook reste la source de procedure, pas un script reproductible de production. |
 | Selection des features finales | `notebooks/final_features_list.csv`, notebook | ✅ Termine | Six variables sont retenues : `Attendance`, `Hours_Studied`, `Previous_Scores`, `Tutoring_Sessions`, `Access_to_Resources`, `Parental_Involvement`. La justification repose sur permutation importance CV et comparaison de modeles. |
 | Pipeline ML serialize | `app/model/ridge_model_final.joblib`, `notebooks/ridge_model_final.joblib` | ✅ Termine, a controler | Pipeline `ColumnTransformer` + `Ridge(alpha=10.0)`. Deux copies existent. La version scikit-learn et la parite notebook/API doivent rester controlees. |
-| Chargement du modele | `app/model_loader.py` | 🟡 Partiellement termine | Chargement joblib, verification de `predict` et de l'etape `model`, avertissement de version. La gestion exacte des versions et la ligne de constante doivent etre nettoyees plus tard. |
+| Chargement du modele | `app/model_loader.py` | ✅ Termine | Chargement joblib, verification de `predict` et de l'etape `model`, avertissement de version. La version attendue `1.9.1` est explicite et le chargement de fichier absent ou invalide produit une erreur claire. |
 | Endpoint de sante | `app/main.py` route `GET /` | ✅ Termine | Retourne le nom du modele et l'ordre des features si le pipeline est charge. |
 | Prediction | `app/main.py` route `POST /predict` | ✅ Termine | Construit une ligne pandas, appelle le pipeline, borne la sortie a `[0, 100]`, renvoie coefficients et seuils. Il n'y a pas de persistance. |
 | Validation d'entree | `app/schemas.py` | ✅ Termine | Types, bornes, categories litterales et refus des champs supplementaires. Les bornes ne sont pas toutes exactement celles observees dans le dataset. |
 | CORS | `app/main.py` | 🟡 Partiellement termine | Origines localhost:8501 et localhost:3000 autorisees. Aucun frontend correspondant n'est present dans le depot. |
-| Tests API | `app/test_main.py` | ✅ Suite executee | Onze tests couvrent lifespan, prediction valide, validation, erreur interne, artefact absent, JWT, isolation student et garde admin. Resultat verifie : `11 passed`. |
+| Tests API | `app/test_main.py` | ✅ Suite executee | Onze tests couvrent lifespan, prediction valide, validation, erreur interne, artefact absent, JWT, isolation student et garde admin. Resultat verifie : `11 passed, 2 warnings`. |
 | Base de donnees | `docs/ADR-001-supabase-auth-and-roles.md` | 🟡 Preparation terminee | Supabase/PostgreSQL, Auth, profils, model versions, predictions et RLS sont decides ; aucune migration ni connexion n'est encore implementee. |
 | Frontend | Aucun fichier present | 🔴 Non termine | La cible est Next.js/BFF selon la roadmap, mais aucun fichier frontend n'est present. |
 | Deploiement | Aucun Docker/CI/config de deploiement | 🔴 Non termine | Aucune configuration de production verifiee. |
@@ -54,7 +54,7 @@ Hors perimetre actuellement verifie : authentification, gestion de comptes, iden
 
 ```mermaid
 flowchart LR
-    Client[Client HTTP non present dans le depot]
+    Client[Client HTTP futur]
     API[FastAPI app/main.py]
     Schema[Pydantic StudentInput]
     Loader[model_loader.py]
@@ -63,11 +63,13 @@ flowchart LR
     Result[PredictionOutput]
     Client --> API
     API --> Schema
+    API --> Auth[JWT Supabase prepare]
     API --> Loader
     Loader --> Artifact
     Artifact --> Pipeline
     Schema --> Pipeline
     Pipeline --> Result
+    Auth --> API
 ```
 
 Le flux de donnees est actuellement en memoire et synchrone : le pipeline est charge au demarrage via le lifespan FastAPI, puis chaque requete fabrique un DataFrame d'une ligne. Aucun composant ne lit ou n'ecrit une base.
@@ -201,7 +203,7 @@ Evaluation test sauvegardee dans le notebook :
 
 Une cellule imprime `Test RMSE : 4.1513`, identique au MSE, puis la cellule suivante imprime `2.0375`. Le second resultat est coherent avec `sqrt(4.1513)` et doit etre retenu avec une mention de cette incoherence a corriger dans le notebook.
 
-`model_loader.py` verifie que l'objet a `predict` et une etape `model`. Il compare aussi la version scikit-learn attendue `1.9.1`, mais la ligne de declaration de cette constante contient du texte juxtapose qui doit etre nettoye et valide. La version exacte de l'environnement courant doit etre controlee avant de regenerer ou de deplacer l'artefact.
+`model_loader.py` verifie que l'objet a `predict` et une etape `model`. Il compare la version scikit-learn attendue `1.9.1` et signale les erreurs de chargement. La compatibilite de version doit etre recontrolee si l'artefact est regenere ou deplace.
 
 L'API extrait `model.coef_` et les associe directement aux six features. Cette interpretation est acceptable ici car le preprocessor final produit six colonnes dans le meme ordre ; elle deviendrait fausse avec un one-hot encoding ou un changement de pipeline. Les coefficients sont des effets du modele, pas une preuve de causalite.
 
@@ -247,23 +249,23 @@ Persistantes potentielles :
 
 Temporaires : DataFrame pandas construit pour une requete, pipeline charge en memoire, coefficients calcules pour la reponse et liste de seuils tant qu'elle n'est pas geree comme une configuration metier.
 
-### 10.2 Entites deduites
+### 10.2 Entites decidees
 
-Le modele conceptuel minimal est `Prediction` et `ModelVersion`. `Student` ne doit etre ajoute que si l'application doit retrouver un historique par etudiant. `User` ne doit etre ajoute que si l'application gere des comptes et des permissions. Les features de prediction doivent etre conservees comme snapshot, car elles representent l'etat au moment du calcul et peuvent differer du profil courant.
+Le modele conceptuel MVP est compose de `auth.users` geree par Supabase, `profiles` pour le role applicatif, `predictions` pour l'historique et `model_versions` pour la traçabilite du modele. Il n'y aura pas de table applicative `users` parallele ni de table `students` dans le perimetre actuel. Les features de prediction seront conservees comme snapshot, car elles representent l'etat au moment du calcul.
 
 ```mermaid
 erDiagram
-    USER ||--o{ STUDENT : manages
-    STUDENT ||--o{ PREDICTION : receives
+    AUTH_USER ||--|| PROFILE : has
+    AUTH_USER ||--o{ PREDICTION : owns
     MODEL_VERSION ||--o{ PREDICTION : produces
-    USER {
-        bigint id PK
-        string email UK
+    AUTH_USER {
+        uuid id PK
+        string email
     }
-    STUDENT {
-        bigint id PK
-        bigint owner_id FK
-        string external_ref
+    PROFILE {
+        uuid id PK, FK
+        string role
+        timestamp created_at
     }
     MODEL_VERSION {
         bigint id PK
@@ -274,7 +276,7 @@ erDiagram
     }
     PREDICTION {
         bigint id PK
-        bigint student_id FK
+        uuid user_id FK
         bigint model_version_id FK
         decimal predicted_score
         json input_snapshot
@@ -282,7 +284,7 @@ erDiagram
     }
 ```
 
-Ce diagramme est maintenant aligne avec la decision MVP authentifiee. `auth.users` est geree par Supabase ; `profiles` porte le role applicatif ; aucune table `users` parallele ne doit etre recreee.
+Ce diagramme est aligne avec la decision MVP authentifiee. `auth.users` est geree par Supabase ; `profiles` porte le role applicatif ; aucune table `users` ou `students` parallele ne doit etre recreee.
 
 ## 11. Proposed Database Schema
 
@@ -333,9 +335,7 @@ Relations : un utilisateur peut avoir plusieurs predictions et un modele peut pr
 
 ### Choix database
 
-PostgreSQL + SQLAlchemy + Alembic est une option solide pour une application multi-utilisateur ou de production : contraintes relationnelles, transactions, concurrence et migrations explicites. SQLite est plus simple pour un MVP local mono-processus. MySQL est possible mais n'est pas impose par le code actuel.
-
-La decision Supabase/PostgreSQL est actee dans `docs/ADR-001-supabase-auth-and-roles.md`. **Decision a valider** : choisir le client `supabase-py` ou SQLAlchemy + driver PostgreSQL pour l'implementation. Les dependances de connexion DB et les migrations SQL restent a ajouter.
+Supabase/PostgreSQL est le choix acté pour le MVP, car il fournit PostgreSQL, Supabase Auth et RLS dans le même service. **Decision pending** : choisir le client `supabase-py` ou SQLAlchemy + driver PostgreSQL pour l'implementation. Les dependances de connexion DB et les migrations SQL restent a ajouter. SQLite et MySQL ne sont pas des options du MVP actuel.
 
 ## 13. Theoretical Knowledge Map
 
@@ -426,14 +426,14 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 
 | Domaine | Etat | Derniere realisation | Prochaine etape |
 |---|---|---|---|
-| Problem Definition | 🟡 | Objectif de prediction etabli, utilisateurs non documentes | Valider persona et usage metier |
+| Problem Definition | ✅ | Objectif, public étudiant et rôles student/admin établis | Préciser les critères de succès du MVP |
 | Data | ✅ | CSV inspecte, schema et qualite connus | Documenter source/licence et traiter le score 101 |
 | Cleaning | 🟡 | Preprocessor notebook large et analyse des manquants | Formaliser un script reproductible |
 | EDA | ✅ | Figures et analyses dans notebook | Conserver un resume lisible hors notebook |
 | Feature Engineering | ✅ | Six features finales | Revalider selection apres correction des incoherences |
 | ML | ✅ | Ridge, Random Forest, Gradient Boosting compares | Reproduire les metriques avec une procedure propre |
 | Model Selection | ✅ | Ridge alpha 10 selectionne | Corriger la cellule RMSE et documenter la version |
-| API | ✅ | `/` et `/predict` fonctionnels sur le papier | Ajouter versioning, observabilite et persistance |
+| API | ✅ | `/` et `/predict` fonctionnels ; routes JWT préparées | Connecter Supabase et remplacer les `501` par la persistance réelle |
 | Tests | ✅ | Onze tests executes | Ajouter ensuite tests d'integration Supabase, RLS et isolation |
 | Database | 🟡 | ADR Supabase/Auth/RLS et routes 501 prepares | Creer tables, migrations et policies |
 | Frontend | 🔴 | Aucun code present | Decider et implementer un client |
@@ -444,12 +444,12 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 | Etape | Objectif et fichiers | Prerequis / theorie | Livrable et critere de fin |
 |---|---|---|---|
 | 1. Requirements | Authentification et historique personnel actees ; documenter donnees et retention | Comprendre persistance, confidentialite et retention | Cas d'usage et roles valides |
-| 2. Conceptual model | Ajouter un document de schema si accepte ; entites `Prediction` et `ModelVersion` d'abord | Entites, relations, cardinalites | ERD relu et valide |
+| 2. Conceptual model | Utiliser `auth.users`, `profiles`, `predictions` et `model_versions` | Entites, relations, cardinalites | ERD relu et valide |
 | 3. Relational model | Definir tables, contraintes, indexes | Normalisation, PK/FK, NULL, CHECK | Tables et contraintes justifiees |
 | 4. Technology selection | Utiliser Supabase/PostgreSQL ; choisir client `supabase-py` ou SQLAlchemy | Transactions, ORM, migrations | Decision d'implementation ecrite |
 | 5. Database setup | Ajouter config d'URL via variables d'environnement, sans secret versionne | Configuration et environnements | Connexion locale verifiee |
 | 6. ORM setup | Creer package `app/db/`, engine, session et base declarative | Session SQLAlchemy et injection | Une session testable est disponible |
-| 7. Models | Implementer `ModelVersion` et `Prediction` ; ajouter Student/User seulement si valide | Mapping ORM et contraintes | `create_all` n'est pas le mecanisme de migration final |
+| 7. Models | Implementer `profiles`, `model_versions` et `predictions` ; ne pas recreer `auth.users` | Mapping ORM et contraintes | `create_all` n'est pas le mecanisme de migration final |
 | 8. Migrations | Ajouter Alembic et premiere migration | Schema versionne | Migration up/down reproductible |
 | 9. Repository/CRUD | Isoler les acces DB des routes | Transactions et repository pattern | Creation et lecture de prediction testees |
 | 10. API integration | Enregistrer une prediction apres calcul, avec modele et snapshot | Atomicite et gestion d'erreur | `/predict` retourne le resultat meme si l'ecriture est controlee ; echec DB traite |
@@ -468,7 +468,7 @@ Fichiers prioritaires : `app/main.py`, `app/model_loader.py`, `app/schemas.py`, 
 
 Contraintes : ne pas remplacer le pipeline final par le preprocessor large sans verifier la compatibilite ; ne pas presenter les tables proposees comme decisions ; ne pas introduire de donnees personnelles sans cas d'usage ; ne pas casser les routes existantes ; executer une verification ciblee apres chaque edit ; garder les artefacts et la version scikit-learn coherents.
 
-Premiere action conseillee : faire valider les exigences de persistance, puis choisir le schema minimal `model_versions` + `predictions`. Ensuite seulement ajouter SQLAlchemy, Alembic, configuration et tests.
+Premiere action conseillee : creer le projet Supabase, puis ecrire les migrations SQL de `profiles`, `model_versions` et `predictions`, avec les policies RLS student/admin. Le choix `supabase-py` versus SQLAlchemy doit etre fait avant la connexion FastAPI.
 
 ## 19. Decisions / Assumptions / Known Issues
 
@@ -501,7 +501,7 @@ Premiere action conseillee : faire valider les exigences de persistance, puis ch
 
 - Les tests ont ete executes apres installation de `requirements.txt` : `11 passed`, avec deux avertissements de deprecation Starlette/httpx.
 - Le notebook contient une sortie RMSE incoherente dans une cellule ; la valeur coherente est 2.0375.
-- La ligne de declaration de `EXPECTED_SKLEARN_VERSION` dans `app/model_loader.py` est suspecte et doit etre nettoyee/reverifiee.
+- La version `EXPECTED_SKLEARN_VERSION` est fixee a `1.9.1` ; elle devra etre mise a jour uniquement avec une regeneration et un test de compatibilite de l'artefact.
 - La verification JWT locale utilise HS256 et devra etre adaptee si le projet Supabase utilise des cles asymetriques/JWKS.
 - Le preprocessor large sauvegarde et le pipeline final API ne sont pas le meme artefact.
 - Aucune base, migration, persistence, CI ou deployment n'est present.
@@ -593,8 +593,8 @@ Le socle ML et l'API de prediction existent. La prochaine fonctionnalite est l'i
 ## Handoff Status
 
 - **Etat global actuel :** 🟡 Prototype backend ML fonctionnel sur artefacts locaux, sans persistance.
-- **Derniere etape terminee :** API FastAPI et tests ecrits autour du pipeline Ridge final.
+- **Derniere etape terminee :** API FastAPI stabilisee, garde JWT student/admin preparee et tests executes.
 - **Prochaine etape :** creer le projet Supabase puis implementer les migrations et policies RLS validees dans l'ADR.
 - **Fichiers prioritaires :** `app/main.py`, `app/model_loader.py`, `app/schemas.py`, `app/test_main.py`, `requirements.txt`, `notebooks/data_science.ipynb`.
 - **Points necessitant validation :** source/licence du dataset, cible 101, seuils pedagogiques, incoherence RMSE, support JWKS ou HS256 Supabase, choix `supabase-py`/SQLAlchemy et seed manuel du premier admin.
-- **Premiere action recommandee pour la phase Database :** rediger et faire valider l'ADR du schema minimal `model_versions`/`predictions` avant d'ajouter des dependances ou des tables.
+- **Premiere action recommandee pour la phase Database :** creer les migrations SQL `profiles`, `model_versions`, `predictions`, puis leurs policies RLS avant de connecter les routes FastAPI.
