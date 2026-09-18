@@ -3,15 +3,24 @@ import logging
 import sklearn
 from pathlib import Path
 
-EXPECTED_SKLEARN_VERSION = "1.9.1"  # version utilisée lors de l'entraînement (cf. notebook)EXPECTED_SKLEARN_VERSION = sklearn.__version__
+EXPECTED_SKLEARN_VERSION = "1.9.1"
 DEFAULT_MODEL_PATH = Path(__file__).parent / "model" / "ridge_model_final.joblib"
 
 
 def load_pipeline(path: Path = DEFAULT_MODEL_PATH, expected_version: str = EXPECTED_SKLEARN_VERSION):
-    pipeline = joblib.load(path)
+    try:
+        pipeline = joblib.load(path)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"Model artifact not found: {path}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"Unable to load model artifact {path}: {exc}") from exc
+
     if sklearn.__version__ != expected_version:
-        # log un warning, ne pas forcément bloquer — à toi de décider
-        logging.warning(f"⚠️ Attention: sklearn {sklearn.__version__} installé, modèle entraîné avec {EXPECTED_SKLEARN_VERSION}.")
+        logging.warning(
+            "scikit-learn version mismatch: runtime=%s expected=%s",
+            sklearn.__version__,
+            expected_version,
+        )
 
     if not hasattr(pipeline, "predict"):
         raise TypeError(

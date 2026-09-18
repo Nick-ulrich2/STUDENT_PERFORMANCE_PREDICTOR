@@ -1,12 +1,13 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import numpy as np
 
 from app.schemas import StudentInput, PredictionOutput
 from app.model_loader import load_pipeline
+from app.auth import CurrentUser, require_admin, require_user
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("app.main")
@@ -39,11 +40,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS : le navigateur bloque par défaut toute requête JS provenant d'une origine
-# (domaine + port) différente de celle de l'API. Ton frontend Streamlit tourne sur
-# un port différent (8501) de l'API (8000) -> sans CORS, le navigateur refuse la
-# réponse même si le serveur répond correctement. On autorise explicitement les
-# origines de dev connues, jamais "*" en pratique dès qu'il y a un vrai déploiement.
+# Development origins only. Production origins must be configured explicitly.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8501", "http://localhost:3000"],
@@ -113,4 +110,31 @@ def predict(data: StudentInput):
         predicted_score=round(predicted_score, 2),
         top_features=top_features,
         below_threshold=below_threshold,
+    )
+
+
+@app.post("/predictions", status_code=501)
+def create_prediction(data: StudentInput, current_user: CurrentUser = Depends(require_user)):
+    """Reserve the authenticated prediction-persistence contract for Supabase."""
+    raise HTTPException(
+        status_code=501,
+        detail="Prediction persistence is not connected to Supabase yet.",
+    )
+
+
+@app.get("/predictions/me", status_code=501)
+def list_my_predictions(current_user: CurrentUser = Depends(require_user)):
+    """Reserve the student-isolated history contract for Supabase."""
+    raise HTTPException(
+        status_code=501,
+        detail="Prediction history is not connected to Supabase yet.",
+    )
+
+
+@app.get("/admin/predictions", status_code=501)
+def list_all_predictions(current_user: CurrentUser = Depends(require_admin)):
+    """Reserve the admin global read contract with backend role enforcement."""
+    raise HTTPException(
+        status_code=501,
+        detail="Admin prediction supervision is not connected to Supabase yet.",
     )
