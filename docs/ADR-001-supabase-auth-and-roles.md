@@ -38,7 +38,7 @@ Cette migration n'est pas executee automatiquement par le backend et aucun secre
 RLS sera activee sur `profiles` et `predictions` avant toute utilisation applicative :
 
 - `student`: `SELECT` et `INSERT` uniquement sur ses propres lignes de `predictions`, avec `auth.uid() = user_id` ; aucune lecture des donnees d'un autre utilisateur ;
-- `admin`: `SELECT` global sur `predictions` et `profiles` ; aucun droit d'ecriture sur les donnees d'un tiers sauf decision explicite ulterieure ;
+- `admin`: `SELECT` global sur `predictions` et `profiles`, ainsi que `INSERT` sur `predictions` pour ses propres lignes (`auth.uid() = user_id`) ; aucun droit de modification ou de suppression des donnees d'un tiers ;
 - les modifications et suppressions de predictions d'un tiers ne font pas partie du MVP.
 
 Le backend FastAPI verifie le JWT Supabase et le role `admin` avant la route d'administration. Le frontend ne sera jamais la seule barriere. `GET /admin/predictions` passe par `require_admin`, valide la signature JWT puis refuse un role `student` avec HTTP 403. Les trois routes FastAPI utilisent maintenant `get_supabase_client(current_user["jwt"])`; leur fonctionnement end-to-end depend de l'execution manuelle de la migration et de vrais tokens Supabase.

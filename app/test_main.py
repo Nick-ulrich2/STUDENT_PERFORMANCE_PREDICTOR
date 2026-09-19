@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import jwt
 import pytest
@@ -181,6 +182,20 @@ def test_admin_route_requires_token(client, monkeypatch):
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "test-secret")
     response = client.get("/admin/predictions")
     assert response.status_code == 401
+
+
+def test_admin_insert_policy_exists_in_migration():
+    migration_path = (
+        Path(__file__).parents[1]
+        / "supabase"
+        / "migrations"
+        / "202609190002_add_admin_insert_policy.sql"
+    )
+    migration_sql = migration_path.read_text(encoding="utf-8")
+
+    assert 'create policy "admins can insert predictions"' in migration_sql
+    assert "for insert" in migration_sql
+    assert "= 'admin'" in migration_sql
 
 
 def test_missing_model_is_explicit(tmp_path):
