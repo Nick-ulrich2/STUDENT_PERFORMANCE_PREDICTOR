@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 class CurrentUser(TypedDict):
     id: str
     role: str
+    jwt: str
     claims: dict[str, Any]
 
 
@@ -58,7 +59,12 @@ def _decode_token(credentials: HTTPAuthorizationCredentials | None) -> CurrentUs
     if not isinstance(user_id, str) or role is None:
         raise _unauthorized("Token must contain a user id and a supported application role.")
 
-    return {"id": user_id, "role": role, "claims": claims}
+    return {
+        "id": user_id, 
+        "role": role,
+        "jwt": credentials.credentials, 
+        "claims": claims
+    }
 
 
 def require_user(
