@@ -1,0 +1,19 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+app/.env
+app/.env.*
+!app/.env.example
+
+# Python local artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.venv/
+
+# Local tooling and editor files
+.vscode/
+.idea/
+*.swp
