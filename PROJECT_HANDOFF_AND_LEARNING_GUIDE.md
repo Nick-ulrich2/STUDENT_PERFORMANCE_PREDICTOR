@@ -15,7 +15,7 @@ Student Performance Predictor est un projet de regression supervisée qui estime
 - des schemas Pydantic et onze tests d'API ;
 - aucune base de donnees, aucun frontend versionne, aucune migration et aucun deploiement.
 
-La decision fonctionnelle est maintenant actee : le MVP comportera une authentification reelle, un historique personnel et deux roles, `student` et `admin`. La persistance cible est Supabase/PostgreSQL avec Supabase Auth et RLS. La verification JWT et les gardes de role sont preparees cote backend, mais Supabase et l'historique ne sont pas encore connectes.
+La decision fonctionnelle est maintenant actee : le MVP comporte une authentification reelle, un historique personnel et deux roles, `student` et `admin`. La persistance cible est Supabase/PostgreSQL avec Supabase Auth et RLS. La verification JWT, les gardes de role et les appels de persistance sont implementes cote backend ; l'execution de la migration distante et le test avec de vrais comptes Supabase restent a valider manuellement.
 
 ## 2. Business Problem
 
@@ -29,7 +29,7 @@ Le public cible n'est pas explicitement documente. Les utilisateurs plausibles s
 
 Inclus : prediction de `Exam_Score` a partir de six variables, validation Pydantic, chargement d'un pipeline local, retour du modele, de cinq coefficients et de seuils d'alerte simples. Les contrats prepares `/predictions`, `/predictions/me` et `/admin/predictions` exigent deja un JWT verifie, mais retournent 501 sans Supabase.
 
-Non encore implemente : connexion reelle a Supabase Auth, gestion persistante des comptes et profils, stockage d'une prediction, suivi longitudinal, frontend versionne, entrainement en production, monitoring, deploiement et gestion de consentement. La verification JWT et la distinction `student/admin` sont preparees dans l'API, sans persistance reelle.
+Non encore implemente : execution distante de la migration, gestion persistante des profils `profiles`, frontend versionne, entrainement en production, monitoring, deploiement et gestion de consentement. Le stockage et l'historique sont implementes dans l'API mais necessitent la table Supabase et les policies RLS executees.
 
 ## 3. Current Project Status
 
@@ -44,7 +44,7 @@ Non encore implemente : connexion reelle a Supabase Auth, gestion persistante de
 | Validation d'entree | `app/schemas.py` | ✅ Termine | Types, bornes, categories litterales et refus des champs supplementaires. Les bornes ne sont pas toutes exactement celles observees dans le dataset. |
 | CORS | `app/main.py` | 🟡 Partiellement termine | Origines localhost:8501 et localhost:3000 autorisees. Aucun frontend correspondant n'est present dans le depot. |
 | Tests API | `app/test_main.py` | ✅ Suite executee | Onze tests couvrent lifespan, prediction valide, validation, erreur interne, artefact absent, JWT, isolation student et garde admin. Resultat verifie : `11 passed, 2 warnings`. |
-| Base de donnees | `docs/ADR-001-supabase-auth-and-roles.md` | 🟡 Preparation terminee | Supabase/PostgreSQL, Auth, profils, model versions, predictions et RLS sont decides ; aucune migration ni connexion n'est encore implementee. |
+| Base de donnees | `supabase/migrations/202609190001_create_predictions.sql`, `app/main.py` | 🟡 Implementation terminee, validation distante requise | Table `predictions`, RLS et trois routes de persistance sont implementees ; migration et test avec vrais JWT restent a executer sur Supabase. |
 | Frontend | Aucun fichier present | 🔴 Non termine | La cible est Next.js/BFF selon la roadmap, mais aucun fichier frontend n'est present. |
 | Deploiement | Aucun Docker/CI/config de deploiement | 🔴 Non termine | Aucune configuration de production verifiee. |
 
@@ -219,9 +219,9 @@ Le backend utilise FastAPI, Pydantic v2, pandas, numpy, scikit-learn, joblib et 
 |---|---|---|---|---|
 | GET | `/` | Aucune | `model_name`, `features` | Verifie que le pipeline est charge et expose son nom ainsi que l'ordre des features. Retourne 503 si le pipeline n'est pas disponible. |
 | POST | `/predict` | JSON conforme a `StudentInput` | `PredictionOutput` | Execute une prediction et renvoie score, coefficients des cinq variables les plus influentes et variables sous seuil. |
-| POST | `/predictions` | JWT + `StudentInput` | `501` actuellement | Contrat reserve a l'enregistrement d'une prediction liee a l'utilisateur connecte ; Supabase n'est pas encore branche. |
-| GET | `/predictions/me` | JWT | `501` actuellement | Contrat reserve a l'historique isole de l'etudiant connecte. |
-| GET | `/admin/predictions` | JWT admin | `501` actuellement | Verifie le role `admin` cote backend ; refuse `student` en `403` avant la future lecture globale. |
+| POST | `/predictions` | JWT + `StudentInput` | Ligne creee | Calcule puis insere une prediction liee a `current_user["id"]`; RLS controle l'ownership. |
+| GET | `/predictions/me` | JWT | Liste des lignes autorisees par RLS | Requete sans filtre Python ; Supabase applique l'isolation student. |
+| GET | `/admin/predictions` | JWT admin | Liste des lignes autorisees par RLS | Verifie le role `admin` cote backend puis lit sans filtre pour la supervision globale. |
 
 `StudentInput` exige six champs, interdit les champs supplementaires et applique : `Attendance` et `Previous_Scores` entre 0 et 100, `Hours_Studied` entre 0 et 45, `Tutoring_Sessions` entre 0 et 8, plus les trois categories `Low/Medium/High` pour les deux variables ordinales.
 
@@ -433,9 +433,9 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 | Feature Engineering | ✅ | Six features finales | Revalider selection apres correction des incoherences |
 | ML | ✅ | Ridge, Random Forest, Gradient Boosting compares | Reproduire les metriques avec une procedure propre |
 | Model Selection | ✅ | Ridge alpha 10 selectionne | Corriger la cellule RMSE et documenter la version |
-| API | ✅ | `/` et `/predict` fonctionnels ; routes JWT préparées | Connecter Supabase et remplacer les `501` par la persistance réelle |
+| API | ✅ | `/`, `/predict` et les trois routes Supabase connectees | Tester end-to-end avec la migration et de vrais JWT |
 | Tests | ✅ | Onze tests executes | Ajouter ensuite tests d'integration Supabase, RLS et isolation |
-| Database | 🟡 | ADR Supabase/Auth/RLS et routes 501 prepares | Creer tables, migrations et policies |
+| Database | 🟡 | Migration `predictions` et policies RLS versionnees | Executer la migration et tester student/admin dans Supabase |
 | Frontend | 🔴 | Aucun code present | Decider et implementer un client |
 | Deployment | 🔴 | Aucun artefact | Ajouter configuration apres stabilisation |
 
@@ -456,7 +456,7 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 | 11. Tests | Ajouter tests unitaires, integration et contraintes | Fixtures, rollback, TestClient | Tests verts dans l'environnement documente |
 | 12. Validation | Verifier historique, migrations, logs et donnees sensibles | Audit et retention | Vertical slice accepte avant frontend |
 
-La premiere tache recommandee est de creer le projet Supabase puis les migrations `profiles`, `model_versions`, `predictions` et leurs policies RLS, en conservant les routes 501 jusqu'au premier test d'integration.
+La premiere tache recommandee est d'executer `supabase/migrations/202609190001_create_predictions.sql` dans le SQL Editor Supabase, puis de verifier l'isolation student et la lecture globale admin avec de vrais JWT.
 
 ## 18. Instructions for the Next AI
 
@@ -505,7 +505,7 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 - La verification JWT locale utilise HS256 et devra etre adaptee si le projet Supabase utilise des cles asymetriques/JWKS.
 - Le preprocessor large sauvegarde et le pipeline final API ne sont pas le meme artefact.
 - Aucune base, migration, persistence, CI ou deployment n'est present.
-- Les routes de persistence et de supervision sont preparees mais retournent volontairement HTTP 501.
+- Les routes de persistence et de supervision sont connectees, mais leur execution distante n'a pas ete verifiee par l'agent.
 - La cible contient la valeur 101 alors que le contrat API et le clipping utilisent 100.
 
 ### Technical debt
@@ -594,7 +594,7 @@ Le socle ML et l'API de prediction existent. La prochaine fonctionnalite est l'i
 
 - **Etat global actuel :** 🟡 Prototype backend ML fonctionnel sur artefacts locaux, sans persistance.
 - **Derniere etape terminee :** API FastAPI stabilisee, garde JWT student/admin preparee et tests executes.
-- **Prochaine etape :** creer le projet Supabase puis implementer les migrations et policies RLS validees dans l'ADR.
+- **Prochaine etape :** executer la migration Supabase puis realiser un test end-to-end student/admin.
 - **Fichiers prioritaires :** `app/main.py`, `app/model_loader.py`, `app/schemas.py`, `app/test_main.py`, `requirements.txt`, `notebooks/data_science.ipynb`.
 - **Points necessitant validation :** source/licence du dataset, cible 101, seuils pedagogiques, incoherence RMSE, support JWKS ou HS256 Supabase, choix `supabase-py`/SQLAlchemy et seed manuel du premier admin.
-- **Premiere action recommandee pour la phase Database :** creer les migrations SQL `profiles`, `model_versions`, `predictions`, puis leurs policies RLS avant de connecter les routes FastAPI.
+- **Premiere action recommandee pour la phase Database :** executer la migration `supabase/migrations/202609190001_create_predictions.sql` dans le dashboard Supabase et verifier les trois policies RLS.

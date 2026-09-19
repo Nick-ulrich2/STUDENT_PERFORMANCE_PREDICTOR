@@ -97,7 +97,7 @@ Variables finales du modèle
 | **3.4 Validation des données** | ✅ | Pydantic valide bornes, catégories et champs supplémentaires. |
 | **3.5 Gestion des erreurs** | 🟡 | Erreurs de chargement et validation couvertes ; couverture interne à compléter. |
 | **3.6 Tests unitaires** | 🟡 | Tests écrits ; exécution dépend de l'installation de pytest. |
-| **3.7 Auth et rôles** | 🟡 | Vérification JWT et `student/admin` préparée ; persistance non connectée. |
+| **3.7 Auth et rôles** | 🟡 | Vérification JWT, rôles et routes Supabase implémentés ; validation distante RLS à faire. |
 
 ---
 
@@ -111,9 +111,9 @@ Variables finales du modèle
 |---|---|---|
 | **4.1 ADR Supabase et rôles** | ✅ | `docs/ADR-001-supabase-auth-and-roles.md` fixe Auth, `student`, `admin`, RLS et périmètre. |
 | **4.2 Gestion des utilisateurs** | ⬜ | Utiliser `auth.users` et `profiles`, sans recréer la table Auth. |
-| **4.3 Historique des prédictions** | ⬜ | Implémenter `predictions` avec snapshot des six features. |
-| **4.4 Migrations** | ⬜ | Ajouter des migrations SQL versionnées dans `supabase/migrations`. |
-| **4.5 Policies RLS** | ⬜ | Student isolé ; admin lecture globale ; aucun droit d'écriture tiers. |
+| **4.3 Historique des prédictions** | 🟡 | Route et migration `predictions` implémentées ; exécution distante à valider. |
+| **4.4 Migrations** | 🟡 | Première migration SQL versionnée dans `supabase/migrations`. |
+| **4.5 Policies RLS** | 🟡 | Policies student/admin écrites ; test réel Supabase à effectuer. |
 
 ---
 

@@ -22,6 +22,34 @@ def _token(role: str) -> str:
         algorithm="HS256",
     )
 
+
+class FakeSupabaseTable:
+    def __init__(self):
+        self.inserted_payload = None
+        self.selected_columns = None
+
+    def insert(self, payload):
+        self.inserted_payload = payload
+        return self
+
+    def select(self, columns):
+        self.selected_columns = columns
+        return self
+
+    def execute(self):
+        if self.inserted_payload is not None:
+            return type("Response", (), {"data": [{"id": "prediction-1", **self.inserted_payload}]})()
+        return type("Response", (), {"data": [{"id": "prediction-1"}]})()
+
+
+class FakeSupabaseClient:
+    def __init__(self):
+        self.predictions = FakeSupabaseTable()
+
+    def table(self, name):
+        assert name == "predictions"
+        return self.predictions
+
 def test_root_returns_200(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -83,13 +111,51 @@ def test_predict_out_of_range_returns_422(client):
     assert response.status_code == 422
 
 
-def test_authenticated_student_route_is_explicitly_unimplemented(client, monkeypatch):
+def test_student_history_route_uses_rls_query(client, monkeypatch):
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "test-secret")
+    monkeypatch.setattr("app.main._get_supabase_client", lambda token: FakeSupabaseClient())
     response = client.get(
         "/predictions/me",
         headers={"Authorization": f"Bearer {_token('student')}"},
     )
-    assert response.status_code == 501
+    assert response.status_code == 200
+
+
+def test_create_prediction_requires_token(client):
+    response = client.post(
+        "/predictions",
+        json={
+            "Attendance": 85,
+            "Hours_Studied": 20,
+            "Previous_Scores": 75,
+            "Tutoring_Sessions": 3,
+            "Access_to_Resources": "High",
+            "Parental_Involvement": "Medium",
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_create_prediction_persists_model_output(client, monkeypatch):
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "test-secret")
+    fake_client = FakeSupabaseClient()
+    monkeypatch.setattr("app.main._get_supabase_client", lambda token: fake_client)
+    response = client.post(
+        "/predictions",
+        json={
+            "Attendance": 85,
+            "Hours_Studied": 20,
+            "Previous_Scores": 75,
+            "Tutoring_Sessions": 3,
+            "Access_to_Resources": "High",
+            "Parental_Involvement": "Medium",
+        },
+        headers={"Authorization": f"Bearer {_token('student')}"},
+    )
+    assert response.status_code == 200
+    assert fake_client.predictions.inserted_payload["user_id"] == "user-123"
+    assert "predicted_score" in fake_client.predictions.inserted_payload
+    assert fake_client.predictions.inserted_payload["model_name"] == "Ridge"
 
 
 def test_admin_route_rejects_student(client, monkeypatch):
@@ -103,11 +169,12 @@ def test_admin_route_rejects_student(client, monkeypatch):
 
 def test_admin_route_verifies_admin_role(client, monkeypatch):
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "test-secret")
+    monkeypatch.setattr("app.main._get_supabase_client", lambda token: FakeSupabaseClient())
     response = client.get(
         "/admin/predictions",
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
-    assert response.status_code == 501
+    assert response.status_code == 200
 
 
 def test_admin_route_requires_token(client, monkeypatch):

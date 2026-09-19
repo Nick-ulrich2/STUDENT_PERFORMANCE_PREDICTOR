@@ -77,64 +77,95 @@ def _compute_below_threshold(data: StudentInput):
     return [name for name, limit in THRESHOLDS.items() if getattr(data, name) < limit]
 
 
-@app.post("/predict", response_model=PredictionOutput)
-def predict(data: StudentInput):
-    logger.info(f"Requête reçue : {data.model_dump()}")
+def _build_prediction(data: StudentInput) -> PredictionOutput:
     try:
         pipeline = pipeline_state["pipeline"]
         row = pd.DataFrame(
             [[getattr(data, col) for col in FEATURE_ORDER]],
             columns=FEATURE_ORDER,
         )
-    except Exception as e:
+    except Exception as exc:
         logger.exception("Échec de construction des données de prédiction")
         raise HTTPException(
             status_code=500,
-            detail=f"Échec de construction des données de prédiction : {e}",
-        )
+            detail="Échec de construction des données de prédiction.",
+        ) from exc
 
     try:
         raw_prediction = pipeline.predict(row)[0]
-    except Exception as e:
-        logger.error(f"Échec interne de la prédiction : {e}")
-        raise HTTPException(status_code=500, detail=f"Échec de la prédiction : {e}")
+    except Exception as exc:
+        logger.exception("Échec interne de la prédiction")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec interne de la prédiction.",
+        ) from exc
 
     predicted_score = float(np.clip(raw_prediction, 0, 100))
-
     model = pipeline.named_steps["model"]
-    top_features = _extract_sorted_coefficients(model, FEATURE_ORDER, top_n=5)
-    below_threshold = _compute_below_threshold(data)
-
     return PredictionOutput(
         model_name=type(model).__name__,
         predicted_score=round(predicted_score, 2),
-        top_features=top_features,
-        below_threshold=below_threshold,
+        top_features=_extract_sorted_coefficients(model, FEATURE_ORDER, top_n=5),
+        below_threshold=_compute_below_threshold(data),
     )
 
 
-@app.post("/predictions", status_code=501)
+def _get_supabase_client(jwt: str):
+    from app.db import get_supabase_client
+
+    return get_supabase_client(jwt)
+
+
+@app.post("/predict", response_model=PredictionOutput)
+def predict(data: StudentInput):
+    logger.info(f"Requête reçue : {data.model_dump()}")
+    return _build_prediction(data)
+
+
+@app.post("/predictions")
 def create_prediction(data: StudentInput, current_user: CurrentUser = Depends(require_user)):
-    """Reserve the authenticated prediction-persistence contract for Supabase."""
-    raise HTTPException(
-        status_code=501,
-        detail="Prediction persistence is not connected to Supabase yet.",
-    )
+    prediction = _build_prediction(data)
+    payload = {
+        **data.model_dump(),
+        "user_id": current_user["id"],
+        "predicted_score": prediction.predicted_score,
+        "model_name": prediction.model_name,
+    }
+    try:
+        response = _get_supabase_client(current_user["jwt"]).table("predictions").insert(payload).execute()
+    except Exception as exc:
+        logger.exception("Échec de l'enregistrement de la prédiction")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de l'enregistrement de la prédiction.",
+        ) from exc
+
+    if not response.data:
+        raise HTTPException(status_code=500, detail="La prédiction n'a pas été enregistrée.")
+    return response.data[0]
 
 
-@app.get("/predictions/me", status_code=501)
+@app.get("/predictions/me")
 def list_my_predictions(current_user: CurrentUser = Depends(require_user)):
-    """Reserve the student-isolated history contract for Supabase."""
-    raise HTTPException(
-        status_code=501,
-        detail="Prediction history is not connected to Supabase yet.",
-    )
+    try:
+        response = _get_supabase_client(current_user["jwt"]).table("predictions").select("*").execute()
+    except Exception as exc:
+        logger.exception("Échec de lecture de l'historique étudiant")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de lecture de l'historique étudiant.",
+        ) from exc
+    return response.data
 
 
-@app.get("/admin/predictions", status_code=501)
+@app.get("/admin/predictions")
 def list_all_predictions(current_user: CurrentUser = Depends(require_admin)):
-    """Reserve the admin global read contract with backend role enforcement."""
-    raise HTTPException(
-        status_code=501,
-        detail="Admin prediction supervision is not connected to Supabase yet.",
-    )
+    try:
+        response = _get_supabase_client(current_user["jwt"]).table("predictions").select("*").execute()
+    except Exception as exc:
+        logger.exception("Échec de lecture de la supervision administrateur")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de lecture de la supervision administrateur.",
+        ) from exc
+    return response.data
