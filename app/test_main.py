@@ -1,12 +1,21 @@
-import os
 from pathlib import Path
 
 import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 
 from app.main import app, pipeline_state
 from app.model_loader import load_pipeline
+
+
+TEST_PRIVATE_KEY = ec.generate_private_key(ec.SECP256R1())
+TEST_PUBLIC_KEY = TEST_PRIVATE_KEY.public_key()
+TEST_KEY_ID = "test-es256-key"
+
+
+class FakeSigningKey:
+    key = TEST_PUBLIC_KEY
 
 
 
@@ -16,11 +25,20 @@ def client():
         yield test_client
 
 
+@pytest.fixture(autouse=True)
+def mock_jwks_client(monkeypatch):
+    monkeypatch.setattr(
+        "app.auth.jwk_client.get_signing_key_from_jwt",
+        lambda token: FakeSigningKey(),
+    )
+
+
 def _token(role: str) -> str:
     return jwt.encode(
         {"sub": "user-123", "aud": "authenticated", "app_metadata": {"role": role}},
-        os.environ["SUPABASE_JWT_SECRET"],
-        algorithm="HS256",
+        TEST_PRIVATE_KEY,
+        algorithm="ES256",
+        headers={"kid": TEST_KEY_ID},
     )
 
 
