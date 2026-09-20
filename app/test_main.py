@@ -155,8 +155,16 @@ def test_create_prediction_persists_model_output(client, monkeypatch):
     )
     assert response.status_code == 200
     assert fake_client.predictions.inserted_payload["user_id"] == "user-123"
+    assert fake_client.predictions.inserted_payload["input_data"] == {
+        "Attendance": 85.0,
+        "Hours_Studied": 20.0,
+        "Previous_Scores": 75.0,
+        "Tutoring_Sessions": 3,
+        "Access_to_Resources": "High",
+        "Parental_Involvement": "Medium",
+    }
     assert "predicted_score" in fake_client.predictions.inserted_payload
-    assert fake_client.predictions.inserted_payload["model_name"] == "Ridge"
+    assert "model_name" not in fake_client.predictions.inserted_payload
 
 
 def test_admin_route_rejects_student(client, monkeypatch):

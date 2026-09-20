@@ -2,6 +2,7 @@ import os
 from typing import Annotated, Any, TypedDict
 
 import jwt
+from jwt import PyJWKClient
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -14,6 +15,8 @@ class CurrentUser(TypedDict):
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+jwk_client = PyJWKClient(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json")
 
 
 def _extract_role(claims: dict[str, Any]) -> str | None:
@@ -37,22 +40,17 @@ def _decode_token(credentials: HTTPAuthorizationCredentials | None) -> CurrentUs
     if credentials is None:
         raise _unauthorized("Bearer token is required.")
 
-    secret = os.getenv("SUPABASE_JWT_SECRET")
-    if not secret:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="SUPABASE_JWT_SECRET is not configured.",
-        )
-
     try:
+        signing_key = jwk_client.get_signing_key_from_jwt(credentials.credentials)
         claims = jwt.decode(
             credentials.credentials,
-            secret,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["ES256"],
             audience=os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated"),
         )
-    except jwt.PyJWTError as exc:
-        raise _unauthorized("Invalid Supabase access token.") from exc
+    except jwt.PyJWTError as e:
+        print("DEBUG_JWT_ERROR:", repr(e))
+        raise _unauthorized("Invalid Supabase access token.")
 
     user_id = claims.get("sub")
     role = _extract_role(claims)

@@ -126,10 +126,9 @@ def predict(data: StudentInput):
 def create_prediction(data: StudentInput, current_user: CurrentUser = Depends(require_user)):
     prediction = _build_prediction(data)
     payload = {
-        **data.model_dump(),
         "user_id": current_user["id"],
+        "input_data": data.model_dump(),
         "predicted_score": prediction.predicted_score,
-        "model_name": prediction.model_name,
     }
     try:
         response = _get_supabase_client(current_user["jwt"]).table("predictions").insert(payload).execute()
