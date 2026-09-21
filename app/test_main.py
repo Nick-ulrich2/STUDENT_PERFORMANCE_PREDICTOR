@@ -34,13 +34,24 @@ def mock_jwks_client(monkeypatch):
     )
 
 
-def _token(role: str) -> str:
+def _token(role: str, *, metadata_field: str = "app_metadata") -> str:
+    payload = {"sub": "user-123", "aud": "authenticated"}
+    payload[metadata_field] = {"role": role}
     return jwt.encode(
-        {"sub": "user-123", "aud": "authenticated", "app_metadata": {"role": role}},
+        payload,
         TEST_PRIVATE_KEY,
         algorithm="ES256",
         headers={"kid": TEST_KEY_ID},
     )
+
+
+def test_user_metadata_role_is_accepted(client):
+    response = client.post(
+        "/predict",
+        json=_payload(),
+        headers={"Authorization": f"Bearer {_token('student', metadata_field='user_metadata')}"},
+    )
+    assert response.status_code == 200
 
 
 class FakeSupabaseTable:

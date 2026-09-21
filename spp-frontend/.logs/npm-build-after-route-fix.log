@@ -1,0 +1,39 @@
+
+> spp-frontend@1.0.0 build
+> next build
+
+   ▲ Next.js 15.5.25
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 19.9s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/12) ...
+   Generating static pages (3/12) 
+   Generating static pages (6/12) 
+   Generating static pages (9/12) 
+ ✓ Generating static pages (12/12)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    2.52 kB         176 kB
+├ ○ /_not-found                            995 B         104 kB
+├ ○ /admin-dashboard                     4.21 kB         178 kB
+├ ○ /history                               831 B         178 kB
+├ ○ /login                               3.37 kB         177 kB
+├ ○ /predict                             5.04 kB         178 kB
+├ ○ /predict/result                      4.24 kB         178 kB
+├ ○ /predictions                           838 B         178 kB
+├ ○ /register                             3.4 kB         177 kB
+└ ○ /student-dashboard                   4.21 kB         178 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/255-37e0f0325134c4d7.js       46.4 kB
+  ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
+  └ other shared chunks (total)          1.92 kB
+
+
+○  (Static)  prerendered as static content
+
+__EXIT:0

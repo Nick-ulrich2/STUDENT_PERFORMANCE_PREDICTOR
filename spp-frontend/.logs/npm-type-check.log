@@ -1,0 +1,5 @@
+
+> spp-frontend@1.0.0 type-check
+> tsc --noEmit --pretty false
+
+__EXIT:0

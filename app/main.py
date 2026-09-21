@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,10 +42,22 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Development origins only. Production origins must be configured explicitly.
+# Local development + explicit production hosts. Update the deployment domain(s)
+# when the frontend is hosted on Vercel or another platform.
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:8501",
+]
+production_frontend = os.getenv("FRONTEND_ORIGIN")
+if production_frontend:
+    allowed_origins.append(production_frontend)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8501", "http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

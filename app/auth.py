@@ -15,16 +15,25 @@ class CurrentUser(TypedDict):
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-jwk_client = PyJWKClient(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+jwk_client = PyJWKClient(f"{SUPABASE_URL or 'https://example.com'}/auth/v1/.well-known/jwks.json")
+
+
+def get_jwk_client() -> PyJWKClient:
+    return jwk_client
 
 
 def _extract_role(claims: dict[str, Any]) -> str | None:
-    app_metadata = claims.get("app_metadata")
-    if isinstance(app_metadata, dict) and app_metadata.get("role") in {"student", "admin"}:
-        return app_metadata["role"]
-    if claims.get("user_role") in {"student", "admin"}:
-        return claims["user_role"]
+    for source in (
+        claims.get("app_metadata"),
+        claims.get("user_metadata"),
+        {"role": claims.get("user_role")},
+    ):
+        if not isinstance(source, dict):
+            continue
+        role = source.get("role")
+        if role in {"student", "admin"}:
+            return role
     return None
 
 
@@ -40,8 +49,11 @@ def _decode_token(credentials: HTTPAuthorizationCredentials | None) -> CurrentUs
     if credentials is None:
         raise _unauthorized("Bearer token is required.")
 
+    if not SUPABASE_URL:
+        raise _unauthorized("SUPABASE_URL is not configured. Add it to your .env file before starting the backend.")
+
     try:
-        signing_key = jwk_client.get_signing_key_from_jwt(credentials.credentials)
+        signing_key = get_jwk_client().get_signing_key_from_jwt(credentials.credentials)
         claims = jwt.decode(
             credentials.credentials,
             signing_key.key,
