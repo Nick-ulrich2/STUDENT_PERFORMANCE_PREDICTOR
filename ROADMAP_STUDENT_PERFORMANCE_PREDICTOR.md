@@ -87,7 +87,7 @@ Variables finales du modèle
 
 **Technologie : FastAPI**
 
-**Statut : 🟡 Initiale réalisée, intégration à poursuivre**
+**Statut : 🟢 Largement avancée, quasi terminée**
 
 | Étape | Statut | Objectif |
 |---|---|---|
@@ -96,8 +96,8 @@ Variables finales du modèle
 | **3.3 Chargement du modèle** | ✅ | Pipeline chargé au lifespan et contrôlé. |
 | **3.4 Validation des données** | ✅ | Pydantic valide bornes, catégories et champs supplémentaires. |
 | **3.5 Gestion des erreurs** | 🟡 | Erreurs de chargement et validation couvertes ; couverture interne à compléter. |
-| **3.6 Tests unitaires** | 🟡 | Tests écrits ; exécution dépend de l'installation de pytest. |
-| **3.7 Auth et rôles** | 🟡 | Vérification JWT, rôles et routes Supabase implémentés ; validation distante RLS à faire. |
+| **3.6 Tests unitaires** | ✅ | Quatorze tests exécutés avec succès, dont les fixtures JWT ES256/JWKS. |
+| **3.7 Auth et rôles** | 🟢 | Vérification JWT ES256/JWKS, rôles et routes Supabase implémentés ; validation distante RLS à faire. |
 
 ---
 
@@ -222,7 +222,7 @@ Ordre d’exécution :
 
 **ADR validé → projet Supabase → `profiles`/`model_versions`/`predictions` → migrations SQL → RLS → connexion FastAPI → tests de rôle et d'isolation**
 
-Une fois **2.5** terminé, nous pourrons revenir proprement sur **1.6 + Phase 4** sans concevoir la base de données à l’aveugle.
+La sélection **2.5** étant terminée et la Phase 3 étant largement avancée, la prochaine étape est **Phase 4** sans concevoir la base de données à l’aveugle.
 
 
 

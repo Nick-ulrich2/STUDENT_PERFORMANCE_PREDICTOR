@@ -12,7 +12,7 @@ Student Performance Predictor est un projet de regression supervisée qui estime
 - un notebook d'exploration, de selection de variables, d'entrainement et d'evaluation ;
 - un pipeline scikit-learn Ridge serialize avec joblib ;
 - une API FastAPI exposant une prediction ;
-- des schemas Pydantic et onze tests d'API ;
+- des schemas Pydantic et quatorze tests d'API ;
 - aucune base de donnees, aucun frontend versionne, aucune migration et aucun deploiement.
 
 La decision fonctionnelle est maintenant actee : le MVP comporte une authentification reelle, un historique personnel et deux roles, `student` et `admin`. La persistance cible est Supabase/PostgreSQL avec Supabase Auth et RLS. La verification JWT, les gardes de role et les appels de persistance sont implementes cote backend ; l'execution de la migration distante et le test avec de vrais comptes Supabase restent a valider manuellement.
@@ -43,7 +43,7 @@ Non encore implemente : execution distante de la migration, gestion persistante 
 | Prediction | `app/main.py` route `POST /predict` | ✅ Termine | Construit une ligne pandas, appelle le pipeline, borne la sortie a `[0, 100]`, renvoie coefficients et seuils. Il n'y a pas de persistance. |
 | Validation d'entree | `app/schemas.py` | ✅ Termine | Types, bornes, categories litterales et refus des champs supplementaires. Les bornes ne sont pas toutes exactement celles observees dans le dataset. |
 | CORS | `app/main.py` | 🟡 Partiellement termine | Origines localhost:8501 et localhost:3000 autorisees. Aucun frontend correspondant n'est present dans le depot. |
-| Tests API | `app/test_main.py` | ✅ Suite executee | Onze tests couvrent lifespan, prediction valide, validation, erreur interne, artefact absent, JWT, isolation student et garde admin. Resultat verifie : `11 passed, 2 warnings`. |
+| Tests API | `app/test_main.py` | ✅ Suite executee | Quatorze tests couvrent lifespan, prediction valide, validation, erreur interne, artefact absent, JWT ES256/JWKS, isolation student et garde admin. Resultat verifie : `14 passed, 2 warnings`. |
 | Base de donnees | `supabase/migrations/202609190001_create_predictions.sql`, `app/main.py` | 🟡 Implementation terminee, validation distante requise | Table `predictions`, RLS et trois routes de persistance sont implementees ; migration et test avec vrais JWT restent a executer sur Supabase. |
 | Frontend | Aucun fichier present | 🔴 Non termine | La cible est Next.js/BFF selon la roadmap, mais aucun fichier frontend n'est present. |
 | Deploiement | Aucun Docker/CI/config de deploiement | 🔴 Non termine | Aucune configuration de production verifiee. |
@@ -231,7 +231,7 @@ Le backend utilise FastAPI, Pydantic v2, pandas, numpy, scikit-learn, joblib et 
 
 Le demarrage leve une erreur runtime si le fichier du modele est absent. La construction du DataFrame et la prediction convertissent les exceptions en HTTP 500. Les erreurs de validation Pydantic deviennent normalement HTTP 422.
 
-Problemes connus : pas de timeout ni de journalisation structuree, pas de version d'API, pas de stockage des requetes, CORS configure pour des origines de developpement seulement, et verification JWT actuellement preparee pour HS256. Les logs incluent les donnees de requete ; cela devra etre reconsidere si des donnees personnelles sont introduites.
+Problemes connus : pas de timeout ni de journalisation structuree, pas de version d'API, pas de stockage des requetes et CORS configure pour des origines de developpement seulement. La verification JWT utilise maintenant ES256 avec une cle publique recuperee dynamiquement via JWKS. Les logs incluent les donnees de requete ; cela devra etre reconsidere si des donnees personnelles sont introduites.
 
 ## 10. Database Preparation
 
@@ -434,7 +434,7 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 | ML | ✅ | Ridge, Random Forest, Gradient Boosting compares | Reproduire les metriques avec une procedure propre |
 | Model Selection | ✅ | Ridge alpha 10 selectionne | Corriger la cellule RMSE et documenter la version |
 | API | ✅ | `/`, `/predict` et les trois routes Supabase connectees | Tester end-to-end avec la migration et de vrais JWT |
-| Tests | ✅ | Onze tests executes | Ajouter ensuite tests d'integration Supabase, RLS et isolation |
+| Tests | ✅ | Quatorze tests executes avec fixtures JWT ES256/JWKS | Ajouter ensuite tests d'integration Supabase, RLS et isolation |
 | Database | 🟡 | Migration `predictions` et policies RLS versionnees | Executer la migration et tester student/admin dans Supabase |
 | Frontend | 🔴 | Aucun code present | Decider et implementer un client |
 | Deployment | 🔴 | Aucun artefact | Ajouter configuration apres stabilisation |
@@ -479,6 +479,7 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 - Les six features finales et leur ordre sont ceux de `FEATURE_ORDER`.
 - FastAPI/Pydantic/joblib/scikit-learn sont la stack actuelle.
 - La reponse API borne le score a `[0, 100]`.
+- La verification JWT utilise ES256 avec JWKS et une cle publique Supabase recuperee dynamiquement.
 
 ### Decisions pending
 
@@ -499,10 +500,9 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 
 ### Known issues
 
-- Les tests ont ete executes apres installation de `requirements.txt` : `11 passed`, avec deux avertissements de deprecation Starlette/httpx.
+- Les tests ont ete executes apres installation de `requirements.txt` : `14 passed`, avec deux avertissements de deprecation Starlette/httpx.
 - Le notebook contient une sortie RMSE incoherente dans une cellule ; la valeur coherente est 2.0375.
 - La version `EXPECTED_SKLEARN_VERSION` est fixee a `1.9.1` ; elle devra etre mise a jour uniquement avec une regeneration et un test de compatibilite de l'artefact.
-- La verification JWT locale utilise HS256 et devra etre adaptee si le projet Supabase utilise des cles asymetriques/JWKS.
 - Le preprocessor large sauvegarde et le pipeline final API ne sont pas le meme artefact.
 - Aucune base, migration, persistence, CI ou deployment n'est present.
 - Les routes de persistence et de supervision sont connectees, mais leur execution distante n'a pas ete verifiee par l'agent.
@@ -586,6 +586,28 @@ Random Forest et Gradient Boosting, ainsi qu'un alpha different.
 
 Le modele est compact et interpretable par coefficients, mais il suppose une relation largement lineaire et son interpretation depend du preprocessing.
 
+## Decision: Use ES256 + JWKS for JWT verification
+
+### Context
+
+L'authentification Supabase utilise des cles asymetriques, et les tests doivent verifier le meme contrat sans dependre d'un secret partage.
+
+### Decision
+
+Verifier les JWT avec l'algorithme ES256 et recuperer dynamiquement la cle publique Supabase via JWKS. Les tests utilisent une cle EC de test et un mock du client JWKS.
+
+### Reason
+
+Cette approche correspond a l'architecture Supabase retenue et permet aux tests de valider le flux de verification sans conserver de secret HS256 partage.
+
+### Alternatives considered
+
+Conserver une verification HS256 avec `SUPABASE_JWT_SECRET` ou embarquer statiquement une cle publique dans l'application.
+
+### Consequences
+
+L'API depend de la disponibilite et de la rotation des cles JWKS Supabase, tandis que les fixtures de test restent deterministes grace au mock JWKS. Aucun secret partage HS256 n'est conserve.
+
 ## 21. Final Handoff Summary
 
 Le socle ML et l'API de prediction existent. La prochaine fonctionnalite est l'implementation de la persistance Supabase pour un MVP authentifie. Le schema minimal est `profiles` + `model_versions` + `predictions`, avec snapshots d'entree, `user_id`, reference immuable au modele et policies RLS student/admin.
@@ -593,8 +615,9 @@ Le socle ML et l'API de prediction existent. La prochaine fonctionnalite est l'i
 ## Handoff Status
 
 - **Etat global actuel :** 🟡 Prototype backend ML fonctionnel sur artefacts locaux, sans persistance.
-- **Derniere etape terminee :** API FastAPI stabilisee, garde JWT student/admin preparee et tests executes.
+- **Derniere etape terminee :** correction de la verification JWT ES256/JWKS et des fixtures associees ; `14 passed`.
+- **Prochaine phase :** PHASE 4 - Base de données.
 - **Prochaine etape :** executer la migration Supabase puis realiser un test end-to-end student/admin.
 - **Fichiers prioritaires :** `app/main.py`, `app/model_loader.py`, `app/schemas.py`, `app/test_main.py`, `requirements.txt`, `notebooks/data_science.ipynb`.
-- **Points necessitant validation :** source/licence du dataset, cible 101, seuils pedagogiques, incoherence RMSE, support JWKS ou HS256 Supabase, choix `supabase-py`/SQLAlchemy et seed manuel du premier admin.
+- **Points necessitant validation :** source/licence du dataset, cible 101, seuils pedagogiques, incoherence RMSE, choix `supabase-py`/SQLAlchemy, execution distante des policies RLS et seed manuel du premier admin.
 - **Premiere action recommandee pour la phase Database :** executer la migration `supabase/migrations/202609190001_create_predictions.sql` dans le dashboard Supabase et verifier les trois policies RLS.
