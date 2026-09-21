@@ -10,6 +10,23 @@ create table if not exists public.model_versions (
     created_at timestamptz default now()
 );
 
+insert into public.model_versions (
+    name,
+    artifact_sha256,
+    sklearn_version,
+    feature_order,
+    is_active
+)
+values (
+    'Ridge',
+    'd3866aae2335834b161a36aa2c7a88b388807e68216bedf6cea57148df94a604',
+    '1.9.1',
+    '["Attendance", "Hours_Studied", "Previous_Scores", "Tutoring_Sessions", "Access_to_Resources", "Parental_Involvement"]'::json,
+    true
+)
+on conflict (artifact_sha256) do update
+set is_active = excluded.is_active;
+
 alter table public.model_versions enable row level security;
 
 drop policy if exists "authenticated users can read model versions"
