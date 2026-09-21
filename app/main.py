@@ -8,6 +8,7 @@ import numpy as np
 from app.schemas import StudentInput, PredictionOutput
 from app.model_loader import load_pipeline
 from app.auth import CurrentUser, require_admin, require_user
+from app import repository
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("app.main")
@@ -110,28 +111,37 @@ def _build_prediction(data: StudentInput) -> PredictionOutput:
     )
 
 
-def _get_supabase_client(jwt: str):
-    from app.db import get_supabase_client
-
-    return get_supabase_client(jwt)
-
-
 @app.post("/predict", response_model=PredictionOutput)
-def predict(data: StudentInput):
+def predict(data: StudentInput, current_user: CurrentUser = Depends(require_user)):
     logger.info(f"Requête reçue : {data.model_dump()}")
-    return _build_prediction(data)
+    prediction = _build_prediction(data)
+    try:
+        repository.create_prediction(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            data=data,
+            model_name=prediction.model_name,
+            predicted_score=prediction.predicted_score,
+            below_threshold=prediction.below_threshold,
+        )
+    except Exception:
+        # The prediction response remains available when persistence is unavailable.
+        logger.exception("Échec de persistance ; la prédiction calculée est retournée")
+    return prediction
 
 
 @app.post("/predictions")
 def create_prediction(data: StudentInput, current_user: CurrentUser = Depends(require_user)):
     prediction = _build_prediction(data)
-    payload = {
-        "user_id": current_user["id"],
-        "input_data": data.model_dump(),
-        "predicted_score": prediction.predicted_score,
-    }
     try:
-        response = _get_supabase_client(current_user["jwt"]).table("predictions").insert(payload).execute()
+        return repository.create_prediction(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            data=data,
+            model_name=prediction.model_name,
+            predicted_score=prediction.predicted_score,
+            below_threshold=prediction.below_threshold,
+        )
     except Exception as exc:
         logger.exception("Échec de l'enregistrement de la prédiction")
         raise HTTPException(
@@ -139,32 +149,26 @@ def create_prediction(data: StudentInput, current_user: CurrentUser = Depends(re
             detail="Échec de l'enregistrement de la prédiction.",
         ) from exc
 
-    if not response.data:
-        raise HTTPException(status_code=500, detail="La prédiction n'a pas été enregistrée.")
-    return response.data[0]
-
-
 @app.get("/predictions/me")
 def list_my_predictions(current_user: CurrentUser = Depends(require_user)):
     try:
-        response = _get_supabase_client(current_user["jwt"]).table("predictions").select("*").execute()
+        return repository.get_predictions_for_user(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+        )
     except Exception as exc:
         logger.exception("Échec de lecture de l'historique étudiant")
         raise HTTPException(
             status_code=500,
             detail="Échec de lecture de l'historique étudiant.",
         ) from exc
-    return response.data
-
-
 @app.get("/admin/predictions")
 def list_all_predictions(current_user: CurrentUser = Depends(require_admin)):
     try:
-        response = _get_supabase_client(current_user["jwt"]).table("predictions").select("*").execute()
+        return repository.get_all_predictions(jwt=current_user["jwt"])
     except Exception as exc:
         logger.exception("Échec de lecture de la supervision administrateur")
         raise HTTPException(
             status_code=500,
             detail="Échec de lecture de la supervision administrateur.",
         ) from exc
-    return response.data
