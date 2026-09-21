@@ -265,6 +265,15 @@ def test_predict_returns_200_when_database_write_fails(client, monkeypatch):
     assert "predicted_score" in response.json()
 
 
+def test_explicit_persistence_returns_500_when_database_write_fails(client, monkeypatch):
+    def fail_create_prediction(**kwargs):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(repository, "create_prediction", fail_create_prediction)
+    response = client.post("/predictions", json=_payload(), headers=_headers())
+    assert response.status_code == 500
+
+
 def test_missing_model_is_explicit(tmp_path):
     missing_path = tmp_path / "missing.joblib"
     with pytest.raises(FileNotFoundError, match="Model artifact not found"):

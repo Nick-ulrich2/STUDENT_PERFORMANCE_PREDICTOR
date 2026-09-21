@@ -110,7 +110,8 @@ def _build_prediction(data: StudentInput) -> PredictionOutput:
         below_threshold=_compute_below_threshold(data),
     )
 
-
+# /predict is the user-facing calculation endpoint: a DB outage must not hide
+# a valid ML result, so persistence is best-effort and failures are logged.
 @app.post("/predict", response_model=PredictionOutput)
 def predict(data: StudentInput, current_user: CurrentUser = Depends(require_user)):
     logger.info(f"Requête reçue : {data.model_dump()}")
@@ -129,7 +130,8 @@ def predict(data: StudentInput, current_user: CurrentUser = Depends(require_user
         logger.exception("Échec de persistance ; la prédiction calculée est retournée")
     return prediction
 
-
+# /predictions is the explicit persistence endpoint: its contract is to confirm
+# durable storage, so a DB failure is reported as HTTP 500 instead of success.
 @app.post("/predictions")
 def create_prediction(data: StudentInput, current_user: CurrentUser = Depends(require_user)):
     prediction = _build_prediction(data)

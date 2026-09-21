@@ -40,11 +40,11 @@ Non encore implemente : execution distante de la migration, gestion persistante 
 | Pipeline ML serialize | `app/model/ridge_model_final.joblib`, `notebooks/ridge_model_final.joblib` | ✅ Termine, a controler | Pipeline `ColumnTransformer` + `Ridge(alpha=10.0)`. Deux copies existent. La version scikit-learn et la parite notebook/API doivent rester controlees. |
 | Chargement du modele | `app/model_loader.py` | ✅ Termine | Chargement joblib, verification de `predict` et de l'etape `model`, avertissement de version. La version attendue `1.9.1` est explicite et le chargement de fichier absent ou invalide produit une erreur claire. |
 | Endpoint de sante | `app/main.py` route `GET /` | ✅ Termine | Retourne le nom du modele et l'ordre des features si le pipeline est charge. |
-| Prediction | `app/main.py` route `POST /predict` | ✅ Termine | Construit une ligne pandas, appelle le pipeline, borne la sortie a `[0, 100]`, renvoie coefficients et seuils. Il n'y a pas de persistance. |
+| Prediction | `app/main.py` route `POST /predict` | ✅ Termine | Construit une ligne pandas, appelle le pipeline, borne la sortie a `[0, 100]`, renvoie coefficients et seuils et persiste la prediction en best-effort. |
 | Validation d'entree | `app/schemas.py` | ✅ Termine | Types, bornes, categories litterales et refus des champs supplementaires. Les bornes ne sont pas toutes exactement celles observees dans le dataset. |
 | CORS | `app/main.py` | 🟡 Partiellement termine | Origines localhost:8501 et localhost:3000 autorisees. Aucun frontend correspondant n'est present dans le depot. |
-| Tests API | `app/test_main.py` | ✅ Suite executee | Quatorze tests couvrent lifespan, prediction valide, validation, erreur interne, artefact absent, JWT ES256/JWKS, isolation student et garde admin. Resultat verifie : `14 passed, 2 warnings`. |
-| Base de donnees | `supabase/migrations/202609190001_create_predictions.sql`, `app/main.py` | 🟡 Implementation terminee, validation distante requise | Table `predictions`, RLS et trois routes de persistance sont implementees ; migration et test avec vrais JWT restent a executer sur Supabase. |
+| Tests API et RLS | `app/test_main.py`, `app/test_rls_integration.py` | ✅ Suite executee | Dix-neuf tests couvrent API, persistance, JWT ES256/JWKS et RLS reel contre PostgreSQL Docker. Resultat verifie : `19 passed`, avec six avertissements de deprecation. |
+| Base de donnees | `supabase/migrations/`, `app/repository.py`, `app/main.py` | 🟢 Implementation terminee, validation staging requise | Tables `model_versions` et `predictions`, RLS, repository et routes de persistance sont implementes ; un test RLS PostgreSQL local passe, mais les vrais comptes Supabase restent a tester. |
 | Frontend | Aucun fichier present | 🔴 Non termine | La cible est Next.js/BFF selon la roadmap, mais aucun fichier frontend n'est present. |
 | Deploiement | Aucun Docker/CI/config de deploiement | 🔴 Non termine | Aucune configuration de production verifiee. |
 
@@ -233,6 +233,10 @@ Le demarrage leve une erreur runtime si le fichier du modele est absent. La cons
 
 Problemes connus : pas de timeout ni de journalisation structuree, pas de version d'API, pas de stockage des requetes et CORS configure pour des origines de developpement seulement. La verification JWT utilise maintenant ES256 avec une cle publique recuperee dynamiquement via JWKS. Les logs incluent les donnees de requete ; cela devra etre reconsidere si des donnees personnelles sont introduites.
 
+### 9.4 Comportement en cas d'echec d'ecriture DB
+
+`POST /predict` est l'endpoint de calcul utilisateur : il retourne le resultat ML valide en HTTP 200 meme si la persistance echoue, et journalise l'erreur, afin qu'une indisponibilite DB ne masque pas la prediction. `POST /predictions` est l'endpoint explicite de persistance : il retourne HTTP 500 si l'ecriture echoue, car annoncer un succes sans stockage durable violerait son contrat.
+
 ## 10. Database Preparation
 
 La base doit repondre a un besoin applicatif confirme, pas simplement stocker une copie du CSV. Le besoin minimal deduit de l'API est de conserver, si l'on veut un historique, les donnees d'entree, la prediction produite, le modele utilise et le moment de la prediction.
@@ -335,7 +339,7 @@ Relations : un utilisateur peut avoir plusieurs predictions et un modele peut pr
 
 ### Choix database
 
-Supabase/PostgreSQL est le choix acté pour le MVP, car il fournit PostgreSQL, Supabase Auth et RLS dans le même service. **Decision pending** : choisir le client `supabase-py` ou SQLAlchemy + driver PostgreSQL pour l'implementation. Les dependances de connexion DB et les migrations SQL restent a ajouter. SQLite et MySQL ne sont pas des options du MVP actuel.
+Supabase/PostgreSQL est le choix acté pour le MVP, car il fournit PostgreSQL, Supabase Auth et RLS dans le même service. Le client `supabase-py` et les migrations SQL natives du dossier `supabase/migrations/` sont actés ; SQLAlchemy, Alembic, SQLite et MySQL ne font pas partie du MVP actuel.
 
 ## 13. Theoretical Knowledge Map
 
@@ -446,17 +450,17 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 | 1. Requirements | Authentification et historique personnel actees ; documenter donnees et retention | Comprendre persistance, confidentialite et retention | Cas d'usage et roles valides |
 | 2. Conceptual model | Utiliser `auth.users`, `profiles`, `predictions` et `model_versions` | Entites, relations, cardinalites | ERD relu et valide |
 | 3. Relational model | Definir tables, contraintes, indexes | Normalisation, PK/FK, NULL, CHECK | Tables et contraintes justifiees |
-| 4. Technology selection | Utiliser Supabase/PostgreSQL ; choisir client `supabase-py` ou SQLAlchemy | Transactions, ORM, migrations | Decision d'implementation ecrite |
+| 4. Technology selection | Utiliser Supabase/PostgreSQL et `supabase-py` | Transactions, client Supabase, migrations | Decision d'implementation ecrite |
 | 5. Database setup | Ajouter config d'URL via variables d'environnement, sans secret versionne | Configuration et environnements | Connexion locale verifiee |
-| 6. ORM setup | Creer package `app/db/`, engine, session et base declarative | Session SQLAlchemy et injection | Une session testable est disponible |
+| 6. Repository setup | Utiliser `app/repository.py` et `get_supabase_client` | Client Supabase et injection | Acces DB isoles et testables |
 | 7. Models | Implementer `profiles`, `model_versions` et `predictions` ; ne pas recreer `auth.users` | Mapping ORM et contraintes | `create_all` n'est pas le mecanisme de migration final |
-| 8. Migrations | Ajouter Alembic et premiere migration | Schema versionne | Migration up/down reproductible |
+| 8. Migrations | Maintenir les migrations SQL natives Supabase | Schema versionne | Migrations SQL appliquees dans l'ordre |
 | 9. Repository/CRUD | Isoler les acces DB des routes | Transactions et repository pattern | Creation et lecture de prediction testees |
 | 10. API integration | Enregistrer une prediction apres calcul, avec modele et snapshot | Atomicite et gestion d'erreur | `/predict` retourne le resultat meme si l'ecriture est controlee ; echec DB traite |
 | 11. Tests | Ajouter tests unitaires, integration et contraintes | Fixtures, rollback, TestClient | Tests verts dans l'environnement documente |
 | 12. Validation | Verifier historique, migrations, logs et donnees sensibles | Audit et retention | Vertical slice accepte avant frontend |
 
-La premiere tache recommandee est d'executer `supabase/migrations/202609190001_create_predictions.sql` dans le SQL Editor Supabase, puis de verifier l'isolation student et la lecture globale admin avec de vrais JWT.
+La prochaine tache recommandee est d'executer les migrations `supabase/migrations/_create_model_versions.sql`, `supabase/migrations/_create_predictions.sql` et `supabase/migrations/_predictions_policies.sql` dans le SQL Editor Supabase, puis de verifier l'isolation student et la lecture globale admin avec de vrais JWT.
 
 ## 18. Instructions for the Next AI
 
@@ -483,7 +487,7 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 
 ### Decisions pending
 
-- Choix precis entre client `supabase-py` et SQLAlchemy + driver PostgreSQL.
+- Le client `supabase-py` et les migrations SQL natives Supabase sont actés ; SQLAlchemy et Alembic ne font pas partie du MVP.
 - Retention, consentement et exposition de l'historique.
 - Strategie finale de synchronisation de `profiles.role` avec le claim JWT.
 - Source et licence du dataset.
@@ -500,11 +504,11 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 
 ### Known issues
 
-- Les tests ont ete executes apres installation de `requirements.txt` : `14 passed`, avec deux avertissements de deprecation Starlette/httpx.
+- Les tests ont ete executes apres installation de `requirements.txt` : `19 passed`, avec des avertissements de deprecation Starlette/httpx/Supabase.
 - Le notebook contient une sortie RMSE incoherente dans une cellule ; la valeur coherente est 2.0375.
 - La version `EXPECTED_SKLEARN_VERSION` est fixee a `1.9.1` ; elle devra etre mise a jour uniquement avec une regeneration et un test de compatibilite de l'artefact.
 - Le preprocessor large sauvegarde et le pipeline final API ne sont pas le meme artefact.
-- Aucune base, migration, persistence, CI ou deployment n'est present.
+- Le test RLS local reel depend de Docker et passe contre PostgreSQL 16 ; un test contre une instance Supabase distante reste a executer.
 - Les routes de persistence et de supervision sont connectees, mais leur execution distante n'a pas ete verifiee par l'agent.
 - La cible contient la valeur 101 alors que le contrat API et le clipping utilisent 100.
 
@@ -516,7 +520,7 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 - Tests sans execution CI verifiee et couverture limitee des erreurs internes.
 - Configuration et secrets non formalises.
 - Seuils metier et chemins de modele codes en dur.
-- Rotation/verification des secrets Supabase et tests RLS restent a implementer.
+- Rotation/verification des secrets Supabase et test RLS Supabase distant restent a implementer.
 
 ## 20. Technical Decision Records
 
@@ -610,14 +614,14 @@ L'API depend de la disponibilite et de la rotation des cles JWKS Supabase, tandi
 
 ## 21. Final Handoff Summary
 
-Le socle ML et l'API de prediction existent. La prochaine fonctionnalite est l'implementation de la persistance Supabase pour un MVP authentifie. Le schema minimal est `profiles` + `model_versions` + `predictions`, avec snapshots d'entree, `user_id`, reference immuable au modele et policies RLS student/admin.
+Le socle ML et l'API de prediction existent. La persistance Supabase du MVP authentifie est implementee avec `model_versions` + `predictions`, snapshots d'entree, `user_id`, reference immuable au modele et policies RLS student/admin.
 
 ## Handoff Status
 
-- **Etat global actuel :** 🟡 Prototype backend ML fonctionnel sur artefacts locaux, sans persistance.
-- **Derniere etape terminee :** correction de la verification JWT ES256/JWKS et des fixtures associees ; `14 passed`.
-- **Prochaine phase :** PHASE 4 - Base de données.
-- **Prochaine etape :** executer la migration Supabase puis realiser un test end-to-end student/admin.
+- **Etat global actuel :** 🟡 Backend ML fonctionnel avec persistance Supabase versionnee et RLS localement valide.
+- **Derniere etape terminee :** implementation de la persistance Supabase, des policies RLS et du test PostgreSQL reel ; `19 passed`.
+- **Prochaine phase :** validation staging Supabase avec de vrais comptes et claims JWT.
+- **Prochaine etape :** executer les migrations dans Supabase puis realiser un test end-to-end student/admin.
 - **Fichiers prioritaires :** `app/main.py`, `app/model_loader.py`, `app/schemas.py`, `app/test_main.py`, `requirements.txt`, `notebooks/data_science.ipynb`.
-- **Points necessitant validation :** source/licence du dataset, cible 101, seuils pedagogiques, incoherence RMSE, choix `supabase-py`/SQLAlchemy, execution distante des policies RLS et seed manuel du premier admin.
-- **Premiere action recommandee pour la phase Database :** executer la migration `supabase/migrations/202609190001_create_predictions.sql` dans le dashboard Supabase et verifier les trois policies RLS.
+- **Points necessitant validation :** source/licence du dataset, cible 101, seuils pedagogiques, incoherence RMSE, execution distante des policies RLS et seed manuel du premier admin.
+- **Premiere action recommandee pour la validation staging :** executer les migrations `supabase/migrations/_create_model_versions.sql`, `supabase/migrations/_create_predictions.sql` et `supabase/migrations/_predictions_policies.sql` dans le dashboard Supabase, puis verifier les policies RLS avec de vrais comptes.
