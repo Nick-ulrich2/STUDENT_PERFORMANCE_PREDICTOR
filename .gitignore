@@ -17,3 +17,7 @@ venv/
 .vscode/
 .idea/
 *.swp
+
+# Node dependencies
+node_modules/
+.next/
