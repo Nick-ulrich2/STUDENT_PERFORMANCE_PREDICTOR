@@ -50,6 +50,7 @@ allowed_origins = [
     "http://localhost:3001",
     "http://127.0.0.1:3001",
     "http://localhost:8501",
+    "http://localhost:3003"
 ]
 production_frontend = os.getenv("FRONTEND_ORIGIN")
 if production_frontend:

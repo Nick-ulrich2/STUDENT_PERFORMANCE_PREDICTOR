@@ -49,14 +49,16 @@ export function useAuth() {
   const [state, setState] = useState<AuthState>(initialState);
 
   useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setState({ ...initialState, loading: false, error: 'Supabase non configuré.' });
+      return;
+    }
+
+    const client = supabase!;
     let mounted = true;
 
     async function load() {
-      if (!isSupabaseConfigured) {
-        setState({ ...initialState, loading: false, error: 'Supabase non configuré.' });
-        return;
-      }
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await client.auth.getSession();
       if (!mounted) return;
       if (error || !data.session) {
         setState({ ...initialState, loading: false });
@@ -73,7 +75,7 @@ export function useAuth() {
 
     load();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = client.auth.onAuthStateChange((_event, newSession) => {
       if (!mounted) return;
       if (!newSession) {
         setState({ ...initialState, loading: false });
@@ -95,8 +97,14 @@ export function useAuth() {
   }, []);
 
   const login = useCallback(async ({ email, password }: LoginCredentials) => {
+    if (!isSupabaseConfigured || !supabase) {
+      setState((s) => ({ ...s, loading: false, error: 'Supabase non configuré.' }));
+      return false;
+    }
+
+    const client = supabase!;
     setState((s) => ({ ...s, loading: true, error: null }));
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error || !data.session) {
       setState((s) => ({
         ...s,
@@ -110,8 +118,14 @@ export function useAuth() {
 
   const register = useCallback(
     async ({ email, password, fullName, role = 'student' }: RegisterCredentials) => {
+      if (!isSupabaseConfigured || !supabase) {
+        setState((s) => ({ ...s, loading: false, error: 'Supabase non configuré.' }));
+        return false;
+      }
+
+      const client = supabase!;
       setState((s) => ({ ...s, loading: true, error: null }));
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await client.auth.signUp({
         email,
         password,
         options: {
@@ -132,7 +146,12 @@ export function useAuth() {
   );
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (!isSupabaseConfigured || !supabase) {
+      setState({ ...initialState, loading: false });
+      return;
+    }
+    const client = supabase!;
+    await client.auth.signOut();
     setState({ ...initialState, loading: false });
   }, []);
 
