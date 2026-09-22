@@ -6,7 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import numpy as np
 
-from app.schemas import StudentInput, PredictionOutput
+from app.schemas import (
+    ActivityCorrection,
+    ActivityRecord,
+    ActivityStart,
+    AggregatedFeatures,
+    AttendanceMark,
+    PredictionOutput,
+    ProfileAttributes,
+    StudentInput,
+)
 from app.model_loader import load_pipeline
 from app.auth import CurrentUser, require_admin, require_user
 from app import repository
@@ -42,15 +51,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Local development + explicit production hosts. Update the deployment domain(s)
-# when the frontend is hosted on Vercel or another platform.
+# Local development + explicit production hosts. The canonical local frontend URL is
+# 127.0.0.1:3001 and the backend must stay on 127.0.0.1:8000.
 allowed_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
     "http://127.0.0.1:3001",
-    "http://localhost:8501",
-    "http://localhost:3003"
+    "http://localhost:3001",
+    "http://127.0.0.1:3002",
+    "http://localhost:3002",
+    "http://127.0.0.1:3003",
+    "http://localhost:3003",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
 ]
 production_frontend = os.getenv("FRONTEND_ORIGIN")
 if production_frontend:
@@ -75,6 +86,11 @@ def root():
         )
     model = pipeline.named_steps["model"]
     return {"model_name": type(model).__name__, "features": FEATURE_ORDER}
+
+
+@app.get("/me")
+def get_my_role(current_user: CurrentUser = Depends(require_user)):
+    return {"role": current_user["role"]}
 
 
 def _extract_sorted_coefficients(model, feature_names, top_n: int | None = None):
@@ -188,3 +204,207 @@ def list_all_predictions(current_user: CurrentUser = Depends(require_admin)):
             status_code=500,
             detail="Échec de lecture de la supervision administrateur.",
         ) from exc
+
+
+# --- Habit tracker: raw activity logs (start/stop/correction cycle) ---
+
+@app.post("/activities/start", response_model=ActivityRecord)
+def start_activity(data: ActivityStart, current_user: CurrentUser = Depends(require_user)):
+    try:
+        return repository.start_activity(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            activity_type=data.activity_type,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Échec du démarrage de l'activité")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec du démarrage de l'activité.",
+        ) from exc
+
+
+@app.post("/activities/{activity_id}/stop", response_model=ActivityRecord)
+def stop_activity(activity_id: int, current_user: CurrentUser = Depends(require_user)):
+    try:
+        return repository.stop_activity(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            activity_id=activity_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Échec de l'arrêt de l'activité")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de l'arrêt de l'activité.",
+        ) from exc
+
+
+@app.post("/activities/attendance", response_model=ActivityRecord)
+def mark_attendance(data: AttendanceMark, current_user: CurrentUser = Depends(require_user)):
+    try:
+        return repository.mark_attendance(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            status=data.status,
+            log_date=data.log_date,
+        )
+    except Exception as exc:
+        logger.exception("Échec de l'enregistrement de l'assiduité")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de l'enregistrement de l'assiduité.",
+        ) from exc
+
+
+@app.post("/activities/{activity_id}/correct", response_model=ActivityRecord)
+def correct_activity(
+    activity_id: int,
+    data: ActivityCorrection,
+    current_user: CurrentUser = Depends(require_user),
+):
+    try:
+        return repository.correct_activity(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            activity_id=activity_id,
+            note=data.note,
+            started_at=data.started_at,
+            ended_at=data.ended_at,
+            status=data.status,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Échec de la correction de l'activité")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de la correction de l'activité.",
+        ) from exc
+
+
+@app.get("/activities/me", response_model=list[ActivityRecord])
+def list_my_activities(current_user: CurrentUser = Depends(require_user)):
+    try:
+        return repository.list_activities(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+        )
+    except Exception as exc:
+        logger.exception("Échec de lecture des activités")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de lecture des activités.",
+        ) from exc
+
+
+# --- Habit tracker: slowly-changing profile attributes (not "activities") ---
+
+@app.get("/me/profile-attributes")
+def get_my_profile_attributes(current_user: CurrentUser = Depends(require_user)):
+    try:
+        return repository.get_profile_attributes(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+        )
+    except Exception as exc:
+        logger.exception("Échec de lecture des attributs du profil")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de lecture des attributs du profil.",
+        ) from exc
+
+
+@app.put("/me/profile-attributes")
+def update_my_profile_attributes(data: ProfileAttributes, current_user: CurrentUser = Depends(require_user)):
+    try:
+        return repository.upsert_profile_attributes(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            previous_scores=data.Previous_Scores,
+            access_to_resources=data.Access_to_Resources,
+            parental_involvement=data.Parental_Involvement,
+        )
+    except RuntimeError as exc:
+        # Raised by the repository when the profile row doesn't exist yet
+        # (e.g. the 0006 migration hasn't run on this database).
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Échec de la mise à jour des attributs du profil")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec de la mise à jour des attributs du profil.",
+        ) from exc
+
+
+# --- Habit tracker: aggregation layer (raw logs -> the six ML features) ---
+
+@app.get("/me/features", response_model=AggregatedFeatures)
+def get_my_features(window_days: int = 7, current_user: CurrentUser = Depends(require_user)):
+    try:
+        return repository.compute_aggregated_features(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            window_days=window_days,
+        )
+    except ValueError as exc:
+        # Missing attendance marks or incomplete profile attributes: the
+        # aggregation is well-defined but not yet possible for this user.
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Échec du calcul des features agrégées")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec du calcul des features agrégées.",
+        ) from exc
+
+
+# /predict/from-activity mirrors /predict exactly (same best-effort persistence
+# contract) ; only the input source changes: aggregated activity_logs instead
+# of a manually typed form.
+@app.post("/predict/from-activity", response_model=PredictionOutput)
+def predict_from_activity(window_days: int = 7, current_user: CurrentUser = Depends(require_user)):
+    try:
+        features = repository.compute_aggregated_features(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            window_days=window_days,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Échec du calcul des features agrégées")
+        raise HTTPException(
+            status_code=500,
+            detail="Échec du calcul des features agrégées.",
+        ) from exc
+
+    data = StudentInput(
+        Attendance=features["Attendance"],
+        Hours_Studied=features["Hours_Studied"],
+        Previous_Scores=features["Previous_Scores"],
+        Tutoring_Sessions=features["Tutoring_Sessions"],
+        Access_to_Resources=features["Access_to_Resources"],
+        Parental_Involvement=features["Parental_Involvement"],
+    )
+    prediction = _build_prediction(data)
+    try:
+        repository.create_prediction(
+            jwt=current_user["jwt"],
+            user_id=current_user["id"],
+            data=data,
+            model_name=prediction.model_name,
+            predicted_score=prediction.predicted_score,
+            below_threshold=prediction.below_threshold,
+        )
+    except Exception:
+        logger.exception("Échec de persistance ; la prédiction calculée est retournée")
+    return prediction

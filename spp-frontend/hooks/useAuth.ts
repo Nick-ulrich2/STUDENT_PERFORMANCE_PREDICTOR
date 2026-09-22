@@ -7,6 +7,7 @@ import type {
   LoginCredentials,
   RegisterCredentials,
   SessionInfo,
+  UserRole,
 } from '@/types/auth';
 
 type AuthState = {
@@ -31,15 +32,35 @@ function readRoleFromMetadata(metadata: unknown): 'student' | 'admin' {
   return 'student';
 }
 
+async function fetchUserRoleFromBackend(accessToken: string): Promise<UserRole> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/+$/, '');
+
+  try {
+    const response = await fetch(`${baseUrl}/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      return 'student';
+    }
+    const payload = await response.json().catch(() => ({ role: 'student' }));
+    return payload.role === 'admin' ? 'admin' : 'student';
+  } catch {
+    return 'student';
+  }
+}
+
 function buildSession(
   sbUser: { id: string; email?: string | null; user_metadata?: unknown },
   token: string,
+  roleOverride?: UserRole,
 ): SessionInfo {
+  const role = roleOverride ?? readRoleFromMetadata(sbUser.user_metadata);
   return {
     user: {
       id: sbUser.id,
       email: sbUser.email ?? '',
-      role: readRoleFromMetadata(sbUser.user_metadata),
+      role,
     },
     accessToken: token,
   };
@@ -64,7 +85,8 @@ export function useAuth() {
         setState({ ...initialState, loading: false });
         return;
       }
-      const session = buildSession(data.session.user, data.session.access_token);
+      const role = await fetchUserRoleFromBackend(data.session.access_token);
+      const session = buildSession(data.session.user, data.session.access_token, role);
       setState({
         user: session.user,
         token: session.accessToken,
@@ -75,13 +97,14 @@ export function useAuth() {
 
     load();
 
-    const { data: sub } = client.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = client.auth.onAuthStateChange(async (_event, newSession) => {
       if (!mounted) return;
       if (!newSession) {
         setState({ ...initialState, loading: false });
         return;
       }
-      const session = buildSession(newSession.user, newSession.access_token);
+      const role = await fetchUserRoleFromBackend(newSession.access_token);
+      const session = buildSession(newSession.user, newSession.access_token, role);
       setState({
         user: session.user,
         token: session.accessToken,
@@ -113,6 +136,18 @@ export function useAuth() {
       }));
       return false;
     }
+
+    const role = await fetchUserRoleFromBackend(data.session.access_token);
+    setState({
+      user: {
+        id: data.session.user.id,
+        email: data.session.user.email ?? '',
+        role,
+      },
+      token: data.session.access_token,
+      loading: false,
+      error: null,
+    });
     return true;
   }, []);
 
@@ -140,6 +175,18 @@ export function useAuth() {
         }));
         return false;
       }
+
+      const backendRole = await fetchUserRoleFromBackend(data.session.access_token);
+      setState({
+        user: {
+          id: data.session.user.id,
+          email: data.session.user.email ?? '',
+          role: backendRole,
+        },
+        token: data.session.access_token,
+        loading: false,
+        error: null,
+      });
       return true;
     },
     [],

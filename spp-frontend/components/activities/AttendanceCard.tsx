@@ -1,0 +1,68 @@
+'use client';
+
+import { Button } from '@/components/ui/Button';
+import type { ActivityRecord, AttendanceStatus } from '@/types/activity';
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isToday(startedAt: string): boolean {
+  return startedAt.slice(0, 10) === todayIsoDate();
+}
+
+type Props = {
+  activities: ActivityRecord[];
+  busy: boolean;
+  onMark: (status: AttendanceStatus) => void;
+};
+
+export function AttendanceCard({ activities, busy, onMark }: Props) {
+  // The most recent, still-active (non-corrected) attendance mark for today.
+  const todayMark = activities.find(
+    (a): a is ActivityRecord & { status: AttendanceStatus } =>
+      a.activity_type === 'attendance' &&
+      (a.status === 'present' || a.status === 'absent') &&
+      isToday(a.started_at),
+  );
+
+  return (
+    <div className="card flex flex-col gap-3">
+      <div className="eyebrow">Assiduité du jour</div>
+      {todayMark ? (
+        <>
+          <p
+            className={`font-display text-2xl ${
+              todayMark.status === 'present' ? 'text-navy' : 'text-red-600'
+            }`}
+          >
+            {todayMark.status === 'present' ? 'Présent' : 'Absent'}
+          </p>
+          <p className="text-xs text-ink/55">
+            Une erreur ? Pointez à nouveau : le pointage précédent sera automatiquement remplacé.
+          </p>
+          <Button
+            onClick={() => onMark(todayMark.status === 'present' ? 'absent' : 'present')}
+            disabled={busy}
+            secondary
+            fullWidth
+          >
+            Marquer {todayMark.status === 'present' ? 'absent' : 'présent'} à la place
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-ink/60">Pas encore pointé aujourd’hui.</p>
+          <div className="flex gap-2">
+            <Button onClick={() => onMark('present')} disabled={busy} fullWidth>
+              Présent
+            </Button>
+            <Button onClick={() => onMark('absent')} disabled={busy} secondary fullWidth>
+              Absent
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

@@ -1,8 +1,13 @@
 import os
 from supabase import create_client, Client
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]  # clé publique, PAS service_role
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+if not SUPABASE_URL:
+    raise RuntimeError("SUPABASE_URL manquant — vérifier que .env est chargé avant uvicorn")
+if not SUPABASE_ANON_KEY:
+    raise RuntimeError("SUPABASE_ANON_KEY manquant — vérifier que .env est chargé avant uvicorn")
 
 
 def get_supabase_client(jwt: str) -> Client:

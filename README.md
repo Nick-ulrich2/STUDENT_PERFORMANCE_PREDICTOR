@@ -25,7 +25,7 @@ Fichiers attendus :
 - `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`
 
 ## Lancer le projet localement
-Le frontend est démarré sur le port 3001 par défaut pour éviter le conflit local sur 3000.
+Le frontend est démarré sur le port canonique 127.0.0.1:3001 et le backend sur 127.0.0.1:8000.
 
 Backend :
 
@@ -53,7 +53,7 @@ pytest
 
 ## Preparation Supabase
 
-Les routes `/predict`, `/predictions`, `/predictions/me` et `/admin/predictions` sont connectées au client Supabase et exigent un JWT ES256 valide ; le rôle doit être présent dans `app_metadata.role` (`student` ou `admin`). Exécute les migrations SQL du dossier `supabase/migrations` sur le dashboard Supabase.
+Les routes `/predict`, `/predictions`, `/predictions/me`, `/me` et `/admin/predictions` sont connectées au client Supabase et exigent un JWT ES256 valide vérifié via le JWKS public de Supabase (`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`); le rôle doit être présent dans `app_metadata.role` (`student` ou `admin`). Exécute les migrations SQL du dossier `supabase/migrations` sur le dashboard Supabase.
 
 La source de vérité des tables et policies est `supabase/migrations`. Le test RLS local réel utilise Docker/PostgreSQL ; l’exécution distante et le test end-to-end avec de vrais comptes restent manuels.
 

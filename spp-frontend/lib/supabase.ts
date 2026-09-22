@@ -7,7 +7,6 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 if (!isSupabaseConfigured) {
   // Surface a clear configuration error in dev instead of crashing later.
-  // eslint-disable-next-line no-console
   console.warn('[supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.');
 }
 

@@ -12,7 +12,6 @@ const COLUMNS: Column[] = [
   { key: 'created_at', label: 'Date' },
   { key: 'user_id', label: 'Utilisateur' },
   { key: 'predicted_score', label: 'Score prédit' },
-  { key: 'model_name', label: 'Modèle' },
   { key: 'actions', label: '' },
 ];
 
@@ -81,7 +80,6 @@ export function PredictionTable({
               <td className="py-3 pr-4 font-bold text-navy">
                 {Number(record.predicted_score).toFixed(1)}
               </td>
-              <td className="py-3 pr-4">{record.model_name}</td>
               <td className="py-3 pr-4 text-right">
                 {onRefresh && (
                   <button

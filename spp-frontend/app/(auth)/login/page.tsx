@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,14 +14,15 @@ export default function LoginPage() {
   const { login, loading, error, user } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
 
-  if (!loading && user) {
-    router.replace(user.role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace(user.role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
+    }
+  }, [loading, user, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const ok = await login(form);
-    if (ok) router.push(user?.role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
+    await login(form);
   };
 
   return (

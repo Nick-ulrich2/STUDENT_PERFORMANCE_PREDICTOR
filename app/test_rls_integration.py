@@ -8,11 +8,12 @@ import pytest
 
 
 ROOT = Path(__file__).parents[1]
-MIGRATIONS = [
-    ROOT / "supabase/migrations/_create_model_versions.sql",
-    ROOT / "supabase/migrations/_create_predictions.sql",
-    ROOT / "supabase/migrations/_predictions_policies.sql",
-]
+# Every migration file, in the exact numeric order they are meant to be applied
+# in (and that Supabase CLI / a dashboard "run all" would use, since filenames
+# now sort correctly). Running the *complete* real set here -- not a hand-picked
+# subset -- is what catches schema-wide issues like the profiles RLS infinite
+# recursion bug that a partial migration list previously missed entirely.
+MIGRATIONS = sorted((ROOT / "supabase/migrations").glob("*.sql"))
 
 
 def _docker_available() -> bool:
@@ -115,7 +116,12 @@ def test_rls_isolation_and_admin_visibility_with_real_postgres():
             """
             create role authenticated nologin;
             create schema auth;
-            create table auth.users (id uuid primary key);
+            create table auth.users (
+                id uuid primary key default gen_random_uuid(),
+                raw_app_meta_data jsonb not null default '{}'::jsonb,
+                raw_user_meta_data jsonb not null default '{}'::jsonb,
+                created_at timestamptz not null default now()
+            );
             create function auth.jwt() returns jsonb
             language sql stable
             as $$ select current_setting('request.jwt.claims', true)::jsonb $$;
@@ -135,6 +141,8 @@ def test_rls_isolation_and_admin_visibility_with_real_postgres():
             """
             grant select, insert on public.model_versions, public.predictions
             to authenticated;
+            grant select, update on public.profiles to authenticated;
+            grant select, insert, update on public.activity_logs to authenticated;
             insert into auth.users (id) values
                 ('00000000-0000-0000-0000-0000000000a1'),
                 ('00000000-0000-0000-0000-0000000000b2'),
@@ -176,6 +184,80 @@ def test_rls_isolation_and_admin_visibility_with_real_postgres():
             """,
         )
         assert admin_rows.splitlines()[-1] == "2"
+
+        # profiles: the auto-provisioning trigger (0006) must have created one
+        # row per signed-up user, and reading it must NOT hit infinite RLS
+        # recursion (the real bug this test previously could not catch,
+        # because it only ever applied a 3-file subset of the migrations that
+        # never included profiles at all).
+        student_a_own_profile = _psql(
+            container,
+            """
+            set role authenticated;
+            set request.jwt.claims =
+                '{"sub":"00000000-0000-0000-0000-0000000000a1",'
+                '"app_metadata":{"role":"student"}}';
+            select count(*) from public.profiles;
+            select count(*) from public.profiles
+            where id = '00000000-0000-0000-0000-0000000000b2';
+            """,
+        ).splitlines()[-2:]
+        assert student_a_own_profile == ["1", "0"], (
+            "a student must see exactly their own profiles row and nobody "
+            "else's -- if this raises instead of returning, the profiles RLS "
+            "policy is recursive again"
+        )
+
+        admin_profiles = _psql(
+            container,
+            """
+            set role authenticated;
+            set request.jwt.claims =
+                '{"sub":"00000000-0000-0000-0000-0000000000ad",'
+                '"app_metadata":{"role":"admin"}}';
+            select count(*) from public.profiles;
+            """,
+        )
+        assert admin_profiles.splitlines()[-1] == "3"
+
+        # activity_logs: same isolation shape as predictions.
+        _psql(
+            container,
+            """
+            set role authenticated;
+            set request.jwt.claims =
+                '{"sub":"00000000-0000-0000-0000-0000000000a1",'
+                '"app_metadata":{"role":"student"}}';
+            insert into public.activity_logs
+                (user_id, activity_type, status, started_at)
+            values
+                ('00000000-0000-0000-0000-0000000000a1', 'study_session',
+                 'in_progress', now());
+            """,
+        )
+        student_b_activity_logs = _psql(
+            container,
+            """
+            set role authenticated;
+            set request.jwt.claims =
+                '{"sub":"00000000-0000-0000-0000-0000000000b2",'
+                '"app_metadata":{"role":"student"}}';
+            select count(*) from public.activity_logs;
+            """,
+        )
+        assert student_b_activity_logs.splitlines()[-1] == "0"
+
+        admin_activity_logs = _psql(
+            container,
+            """
+            set role authenticated;
+            set request.jwt.claims =
+                '{"sub":"00000000-0000-0000-0000-0000000000ad",'
+                '"app_metadata":{"role":"admin"}}';
+            select count(*) from public.activity_logs;
+            """,
+        )
+        assert admin_activity_logs.splitlines()[-1] == "1"
     finally:
         subprocess.run(
             ["docker", "rm", "--force", container],

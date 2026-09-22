@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
@@ -46,4 +47,62 @@ class PredictionOutput(BaseModel):
     )
     below_threshold: list[str] = Field(
         ..., description="Liste des variables de l'étudiant en dessous des seuils recommandés."
+    )
+
+
+# --- Habit tracker: raw activity logs, aggregated into the schemas above ---
+
+class ActivityStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    activity_type: Literal["study_session", "tutoring_session"] = Field(
+        ...,
+        description="Type d'activité à démarrer. L'assiduité se marque via "
+                    "/activities/attendance (pas de start/stop pour un statut binaire).",
+    )
+
+
+class ActivityRecord(BaseModel):
+    id: int
+    activity_type: str
+    status: str
+    started_at: datetime
+    ended_at: datetime | None = None
+    corrected_from: int | None = None
+    note: str | None = None
+
+
+class AttendanceMark(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["present", "absent"]
+    log_date: date = Field(
+        default_factory=date.today,
+        description="Jour concerné par ce marquage d'assiduité (par défaut aujourd'hui).",
+    )
+
+
+class ActivityCorrection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: str = Field(..., min_length=1, max_length=280, description="Raison de la correction.")
+    started_at: datetime | None = Field(None, description="Nouvelle heure de début, si à corriger.")
+    ended_at: datetime | None = Field(None, description="Nouvelle heure de fin, si à corriger.")
+    status: Literal["present", "absent"] | None = Field(
+        None, description="Nouveau statut ; uniquement pour corriger une activité de type attendance."
+    )
+
+
+class ProfileAttributes(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    Previous_Scores: float = Field(..., ge=0, le=100)
+    Access_to_Resources: Literal["Low", "Medium", "High"]
+    Parental_Involvement: Literal["Low", "Medium", "High"]
+
+
+class AggregatedFeatures(StudentInput):
+    window_days: int = Field(..., description="Taille de la fenêtre glissante utilisée pour l'agrégation, en jours.")
+    days_logged: int = Field(
+        ..., description="Nombre de jours distincts avec au moins un événement d'assiduité dans la fenêtre."
     )

@@ -16,9 +16,23 @@ export interface PredictionOutput {
   below_threshold: string[];
 }
 
-export interface PredictionRecord extends PredictionOutput {
-  id: string;
+// The shape of a row as persisted by app/repository.py::create_prediction and
+// returned as-is (select *) by GET /predictions/me and GET /admin/predictions.
+// This is NOT the live /predict response (see PredictionOutput above): the
+// stored row has no model_name (only model_version_id, a foreign key with no
+// name join in the current query) and no top_features (those are computed at
+// prediction time from the live model, not persisted).
+export interface PredictionRecord {
+  id: number;
   user_id: string;
+  model_version_id: number;
+  attendance: number;
+  hours_studied: number;
+  previous_scores: number;
+  tutoring_sessions: number;
+  access_to_resources: ResourceLevel;
+  parental_involvement: ResourceLevel;
+  predicted_score: number;
+  below_threshold: string[] | null;
   created_at: string;
-  input: StudentInput;
 }

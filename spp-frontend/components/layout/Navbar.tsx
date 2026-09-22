@@ -1,8 +1,20 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { navigation } from '@/data/navigation';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/hooks/useAuth';
 
 export function Navbar() {
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-line/80 bg-cream/80 backdrop-blur">
       <div className="container flex h-[76px] items-center justify-between gap-4">
@@ -25,12 +37,21 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="px-3 py-3 text-sm font-bold text-navy">
-            Sign in
-          </Link>
-          <Button href="/register">Get started</Button>
-        </div>
+        {!loading && user ? (
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm font-semibold text-ink/70 sm:inline">
+              {user.email} · {user.role === 'admin' ? 'Admin' : 'Étudiant'}
+            </span>
+            <Button onClick={handleLogout}>Se déconnecter</Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="px-3 py-3 text-sm font-bold text-navy">
+              Sign in
+            </Link>
+            <Button href="/register">Get started</Button>
+          </div>
+        )}
       </div>
     </header>
   );

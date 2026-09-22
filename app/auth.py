@@ -1,10 +1,13 @@
+import logging
 import os
+import time
 from typing import Annotated, Any, TypedDict
 
 import jwt
-from jwt import PyJWKClient
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+logger = logging.getLogger("app.auth")
 
 
 class CurrentUser(TypedDict):
@@ -16,24 +19,26 @@ class CurrentUser(TypedDict):
 
 bearer_scheme = HTTPBearer(auto_error=False)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
-jwk_client = PyJWKClient(f"{SUPABASE_URL or 'https://example.com'}/auth/v1/.well-known/jwks.json")
-
-
-def get_jwk_client() -> PyJWKClient:
-    return jwk_client
+JWKS_CACHE_TTL_SECONDS = 60 * 60 * 4
+_JWKS_CACHE: dict[str, Any] = {"expires_at": 0.0, "keys": {}}
 
 
 def _extract_role(claims: dict[str, Any]) -> str | None:
-    for source in (
-        claims.get("app_metadata"),
-        claims.get("user_metadata"),
-        {"role": claims.get("user_role")},
-    ):
-        if not isinstance(source, dict):
-            continue
-        role = source.get("role")
-        if role in {"student", "admin"}:
-            return role
+    # SECURITY: only app_metadata is a trusted source of the application role.
+    # user_metadata (and its underlying raw_user_meta_data) is client-controlled:
+    # anyone calling Supabase Auth signUp directly can set
+    # options.data.role to whatever they want. A prior version of this function
+    # also accepted user_metadata.role and a bare user_role claim as fallbacks,
+    # which let any signup grant itself the "admin" role — see
+    # supabase/migrations/0005_remove_insecure_role_sync_trigger.sql for
+    # the matching database-side fix. Never reintroduce a fallback to
+    # user_metadata or a client-settable claim here.
+    app_metadata = claims.get("app_metadata")
+    if not isinstance(app_metadata, dict):
+        return None
+    role = app_metadata.get("role")
+    if role in {"student", "admin"}:
+        return role
     return None
 
 
@@ -45,23 +50,47 @@ def _unauthorized(detail: str) -> HTTPException:
     )
 
 
+def _get_jwks_url() -> str:
+    if not SUPABASE_URL:
+        raise _unauthorized("SUPABASE_URL manquant — vérifier que .env est chargé avant uvicorn")
+    return f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+
+
+def _get_signing_key_from_jwks(token: str) -> str:
+    header = jwt.get_unverified_header(token)
+    key_id = header.get("kid")
+    if not isinstance(key_id, str) or not key_id:
+        raise _unauthorized("Token missing key id (kid) in JWT header.")
+
+    now = time.time()
+    cache = _JWKS_CACHE
+    if now >= cache["expires_at"] or key_id not in cache["keys"]:
+        client = jwt.PyJWKClient(_get_jwks_url())
+        signing_key = client.get_signing_key_from_jwt(token)
+        cache["keys"][key_id] = signing_key.key
+        cache["expires_at"] = now + JWKS_CACHE_TTL_SECONDS
+
+    signing_key = cache["keys"].get(key_id)
+    if signing_key is None:
+        raise _unauthorized("No public JWKS key found for the provided token.")
+    return signing_key
+
+
 def _decode_token(credentials: HTTPAuthorizationCredentials | None) -> CurrentUser:
     if credentials is None:
         raise _unauthorized("Bearer token is required.")
 
-    if not SUPABASE_URL:
-        raise _unauthorized("SUPABASE_URL is not configured. Add it to your .env file before starting the backend.")
-
+    token = credentials.credentials
     try:
-        signing_key = get_jwk_client().get_signing_key_from_jwt(credentials.credentials)
+        signing_key = _get_signing_key_from_jwks(token)
         claims = jwt.decode(
-            credentials.credentials,
-            signing_key.key,
+            token,
+            signing_key,
             algorithms=["ES256"],
             audience=os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated"),
         )
-    except jwt.PyJWTError as e:
-        print("DEBUG_JWT_ERROR:", repr(e))
+    except jwt.PyJWTError as exc:
+        logger.warning("JWT verification failed: %r", exc)
         raise _unauthorized("Invalid Supabase access token.")
 
     user_id = claims.get("sub")
@@ -70,10 +99,10 @@ def _decode_token(credentials: HTTPAuthorizationCredentials | None) -> CurrentUs
         raise _unauthorized("Token must contain a user id and a supported application role.")
 
     return {
-        "id": user_id, 
+        "id": user_id,
         "role": role,
-        "jwt": credentials.credentials, 
-        "claims": claims
+        "jwt": token,
+        "claims": claims,
     }
 
 

@@ -16,7 +16,7 @@ if [ -f "$ROOT_DIR/app/.env" ]; then
   set +a
 fi
 
-for port in 3000 3001 8000; do
+for port in 3001 8000; do
   if command -v fuser >/dev/null 2>&1; then
     fuser -k "${port}/tcp" >/dev/null 2>&1 || true
   fi

@@ -31,7 +31,7 @@ function AdminDashboard() {
             <div className="eyebrow">Action rapide</div>
             <p className="mt-2 text-ink/75">Consultez la liste détaillée des prédictions.</p>
             <div className="mt-4">
-              <Button href="/admin/predictions">Voir la liste</Button>
+              <Button href="/predictions">Voir la liste</Button>
             </div>
           </div>
           <div className="card">
