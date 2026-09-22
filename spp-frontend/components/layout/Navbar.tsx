@@ -47,9 +47,9 @@ export function Navbar() {
         ) : (
           <div className="flex items-center gap-3">
             <Link href="/login" className="px-3 py-3 text-sm font-bold text-navy">
-              Sign in
+              Connexion
             </Link>
-            <Button href="/register">Get started</Button>
+            <Button href="/register">Créer un compte</Button>
           </div>
         )}
       </div>

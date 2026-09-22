@@ -1,2 +1,57 @@
-'use client'; import {useState} from 'react'; import {faqs} from '@/data/faqs'; import {SectionIntro} from '@/components/ui/SectionIntro'; import {Reveal} from '@/components/ui/Reveal';
-export function FAQSection(){const [active,setActive]=useState(0);return <section className="section-pad"><div className="container grid gap-12 md:grid-cols-[.65fr_1.35fr]"><SectionIntro eyebrow="Questions, answered" title="A little more clarity" description="Good tools should make things clearer, not add more noise."/><Reveal><div className="divide-y divide-line border-y border-line">{faqs.map(([q,a],i)=>{const open=active===i;return <div key={q}><button aria-expanded={open} aria-controls={`faq-${i}`} onClick={()=>setActive(open?-1:i)} className="flex min-h-[72px] w-full items-center justify-between gap-5 text-left font-bold text-navy"><span>{q}</span><span aria-hidden="true" className={`faq-arrow grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky text-lg text-teal ${open?'faq-arrow-open':''}`}>⌄</span></button><div id={`faq-${i}`} role="region" aria-hidden={!open} className={`faq-panel ${open?'faq-panel-open':''}`}><div><p className="max-w-2xl pb-6 pr-10 leading-7 text-ink/60">{a}</p></div></div></div>})}</div></Reveal></div></section>}
+'use client';
+
+import { useState } from 'react';
+import { faqs } from '@/data/faqs';
+import { SectionIntro } from '@/components/ui/SectionIntro';
+import { Reveal } from '@/components/ui/Reveal';
+
+export function FAQSection() {
+  const [active, setActive] = useState(0);
+
+  return (
+    <section className="section-pad">
+      <div className="container grid gap-12 md:grid-cols-[.65fr_1.35fr]">
+        <SectionIntro
+          eyebrow="Questions fréquentes"
+          title="Un peu plus de clarté"
+          description="Un bon outil doit clarifier les choses, pas ajouter du bruit."
+        />
+        <Reveal>
+          <div className="divide-y divide-line border-y border-line">
+            {faqs.map(([q, a], i) => {
+              const open = active === i;
+              return (
+                <div key={q}>
+                  <button
+                    aria-expanded={open}
+                    aria-controls={`faq-${i}`}
+                    onClick={() => setActive(open ? -1 : i)}
+                    className="flex min-h-[72px] w-full items-center justify-between gap-5 text-left font-bold text-navy"
+                  >
+                    <span>{q}</span>
+                    <span
+                      aria-hidden="true"
+                      className={`faq-arrow grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky text-lg text-teal ${open ? 'faq-arrow-open' : ''}`}
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    id={`faq-${i}`}
+                    role="region"
+                    aria-hidden={!open}
+                    className={`faq-panel ${open ? 'faq-panel-open' : ''}`}
+                  >
+                    <div>
+                      <p className="max-w-2xl pb-6 pr-10 leading-7 text-ink/60">{a}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}

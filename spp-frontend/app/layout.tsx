@@ -18,7 +18,7 @@ const dmSerif = DM_Serif_Display({
 export const metadata: Metadata = {
   title: 'SPP — Student Performance Predictor',
   description:
-    'Understand your learning habits and predict your academic performance with clarity.',
+    'Comprenez vos habitudes d\'apprentissage et anticipez votre performance académique en toute clarté.',
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body className={`${manrope.variable} ${dmSerif.variable}`}>
         {children}
       </body>

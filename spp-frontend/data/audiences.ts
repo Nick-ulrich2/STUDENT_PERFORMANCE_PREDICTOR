@@ -1,1 +1,17 @@
-export const audiences=[{title:'Students',text:'Build a more honest picture of your routine, spot what helps, and choose your next small step.',featured:true},{title:'Teachers',text:'Offer a common language for supportive conversations about habits and progress.',featured:false},{title:'Institutions',text:'Explore patterns that can inform better learning support—without reducing students to a score.',featured:false}];
+export const audiences = [
+  {
+    title: 'Étudiants',
+    text: "Construisez une image plus honnête de votre routine, identifiez ce qui vous aide et choisissez votre prochaine petite étape.",
+    featured: true,
+  },
+  {
+    title: 'Enseignants',
+    text: 'Offrez un langage commun pour des conversations bienveillantes sur les habitudes et la progression.',
+    featured: false,
+  },
+  {
+    title: 'Institutions',
+    text: 'Explorez des tendances pour mieux accompagner l’apprentissage — sans réduire les étudiants à un score.',
+    featured: false,
+  },
+];

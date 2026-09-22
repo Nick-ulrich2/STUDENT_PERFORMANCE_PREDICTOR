@@ -1,1 +1,22 @@
-export const faqs=[['What is SPP?','SPP is an educational support tool that helps you notice the habits connected to your learning and reflect on a data-informed performance estimate.'],['What information do I need to share?','You choose what to track: simple study habits, attendance, sleep, and your own observations. We keep the experience focused and understandable.'],['Is the performance estimate a grade?','No. It is an indicator designed to support reflection—not a grade, diagnosis, or guarantee of future academic performance.'],['Who can see my information?','Your personal learning information is private by design. You decide what to record and what to share with teachers or advisors.'],['Can I use SPP if my routine changes?','Absolutely. Learning is not linear. SPP is most useful when it helps you notice change over time, without judging a single day.']];
+export const faqs: [string, string][] = [
+  [
+    'Qu’est-ce que SPP ?',
+    'SPP est un outil d’accompagnement pédagogique qui vous aide à repérer les habitudes liées à votre apprentissage et à réfléchir à une estimation de performance basée sur vos données.',
+  ],
+  [
+    'Quelles informations dois-je partager ?',
+    'Vous choisissez ce que vous suivez : habitudes d’étude simples, assiduité, sommeil et vos propres observations. Nous gardons l’expérience simple et compréhensible.',
+  ],
+  [
+    'L’estimation de performance est-elle une note ?',
+    'Non. C’est un indicateur conçu pour soutenir la réflexion — pas une note, un diagnostic, ni une garantie de performance académique future.',
+  ],
+  [
+    'Qui peut voir mes informations ?',
+    'Vos informations d’apprentissage personnelles sont privées par conception. Vous décidez quoi enregistrer et quoi partager avec vos enseignants ou conseillers.',
+  ],
+  [
+    'Puis-je utiliser SPP si ma routine change ?',
+    'Bien sûr. L’apprentissage n’est pas linéaire. SPP est surtout utile pour repérer les changements dans le temps, sans juger une seule journée.',
+  ],
+];
