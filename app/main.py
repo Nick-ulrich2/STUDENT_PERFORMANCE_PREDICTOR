@@ -14,11 +14,14 @@ from app.schemas import (
     AttendanceMark,
     PredictionOutput,
     ProfileAttributes,
+    RecommendationOutput,
+    RecommendationRequest,
     StudentInput,
 )
 from app.model_loader import load_pipeline
 from app.auth import CurrentUser, require_admin, require_user
 from app import repository
+from app.llm import RecommendationError, generate_recommendation
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("app.main")
@@ -408,3 +411,23 @@ def predict_from_activity(window_days: int = 7, current_user: CurrentUser = Depe
     except Exception:
         logger.exception("Échec de persistance ; la prédiction calculée est retournée")
     return prediction
+
+
+# --- LLM recommendations (roadmap Phase 6) ---
+# Strict separation from the ML layer: the client sends back the PredictionOutput
+# it already received from /predict or /predict/from-activity, and this route only
+# turns it into a short explanation. The LLM never sees raw student data and never
+# influences predicted_score — ML predicts, LLM explains, never the reverse.
+@app.post("/predict/recommendation", response_model=RecommendationOutput)
+def get_recommendation(
+    data: RecommendationRequest, current_user: CurrentUser = Depends(require_user)
+):
+    try:
+        text = generate_recommendation(
+            predicted_score=data.predicted_score,
+            top_features=data.top_features,
+            below_threshold=data.below_threshold,
+        )
+    except RecommendationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return RecommendationOutput(recommendation=text)

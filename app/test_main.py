@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -14,7 +15,7 @@ os.environ.setdefault("SUPABASE_ANON_KEY", "anon-key")
 
 from app.main import app, pipeline_state
 from app.model_loader import load_pipeline
-from app import repository
+from app import llm, repository
 
 
 TEST_PRIVATE_KEY = ec.generate_private_key(ec.SECP256R1())
@@ -716,3 +717,75 @@ def test_predict_from_activity_uses_aggregated_features(client, monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert "predicted_score" in body
+
+
+# --- LLM recommendations (roadmap Phase 6) ---
+
+def _recommendation_payload():
+    return {
+        "predicted_score": 64.4,
+        "top_features": {"Attendance": 2.292, "Hours_Studied": 1.748},
+        "below_threshold": ["Hours_Studied", "Tutoring_Sessions"],
+    }
+
+
+class FakeGroqResponse:
+    def __init__(self, status_code=200, body=None):
+        self.status_code = status_code
+        self._body = body or {
+            "choices": [{"message": {"content": "Continuez ainsi, en augmentant vos heures d'étude."}}]
+        }
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+            response = httpx.Response(self.status_code, request=request)
+            raise httpx.HTTPStatusError("error", request=request, response=response)
+
+    def json(self):
+        return self._body
+
+
+def test_recommendation_requires_token(client):
+    response = client.post("/predict/recommendation", json=_recommendation_payload())
+    assert response.status_code == 401
+
+
+def test_recommendation_missing_api_key_returns_503(client, monkeypatch):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    response = client.post(
+        "/predict/recommendation", json=_recommendation_payload(), headers=_headers()
+    )
+    assert response.status_code == 503
+    assert "GROQ_API_KEY" in response.json()["detail"]
+
+
+def test_recommendation_success(client, monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(llm.httpx, "post", lambda *a, **k: FakeGroqResponse())
+    response = client.post(
+        "/predict/recommendation", json=_recommendation_payload(), headers=_headers()
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "recommendation": "Continuez ainsi, en augmentant vos heures d'étude."
+    }
+
+
+def test_recommendation_upstream_error_returns_503(client, monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(llm.httpx, "post", lambda *a, **k: FakeGroqResponse(status_code=429))
+    response = client.post(
+        "/predict/recommendation", json=_recommendation_payload(), headers=_headers()
+    )
+    assert response.status_code == 503
+
+
+def test_recommendation_never_leaks_raw_student_data(client, monkeypatch):
+    # The LLM must only ever see the already-computed prediction, never a raw
+    # StudentInput payload -- extra="forbid" on RecommendationRequest enforces this.
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(llm.httpx, "post", lambda *a, **k: FakeGroqResponse())
+    payload = {**_recommendation_payload(), "Attendance": 85}
+    response = client.post("/predict/recommendation", json=payload, headers=_headers())
+    assert response.status_code == 422

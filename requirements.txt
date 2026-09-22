@@ -8,3 +8,4 @@ uvicorn==0.23.2
 PyJWT[crypto]==2.13.0
 pytest==9.0.3
 supabase==2.31.0
+httpx==0.28.1

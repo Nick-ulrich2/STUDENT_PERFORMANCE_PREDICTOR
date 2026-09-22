@@ -16,6 +16,18 @@ export interface PredictionOutput {
   below_threshold: string[];
 }
 
+// LLM recommendation layer (roadmap Phase 6): the request is exactly the
+// prediction the client already has — the LLM explains it, it never
+// re-predicts from raw student data.
+export type RecommendationRequest = Pick<
+  PredictionOutput,
+  'predicted_score' | 'top_features' | 'below_threshold'
+>;
+
+export interface RecommendationOutput {
+  recommendation: string;
+}
+
 // The shape of a row as persisted by app/repository.py::create_prediction and
 // returned as-is (select *) by GET /predictions/me and GET /admin/predictions.
 // This is NOT the live /predict response (see PredictionOutput above): the

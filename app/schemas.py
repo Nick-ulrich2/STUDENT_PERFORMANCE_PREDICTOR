@@ -50,6 +50,25 @@ class PredictionOutput(BaseModel):
     )
 
 
+class RecommendationRequest(BaseModel):
+    """Input for /predict/recommendation: the client sends back exactly what
+    /predict or /predict/from-activity just returned. The LLM never sees raw
+    student data, only the already-computed prediction — it explains, it
+    does not predict."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    predicted_score: float = Field(..., ge=0, le=100)
+    top_features: dict[str, float]
+    below_threshold: list[str]
+
+
+class RecommendationOutput(BaseModel):
+    recommendation: str = Field(
+        ..., description="Explication et piste d'action générées par le LLM à partir de la prédiction."
+    )
+
+
 # --- Habit tracker: raw activity logs, aggregated into the schemas above ---
 
 class ActivityStart(BaseModel):

@@ -1,5 +1,11 @@
 import type { ApiError, ApiResponse, RequestOptions } from '@/types/api';
-import type { PredictionOutput, PredictionRecord, StudentInput } from '@/types/prediction';
+import type {
+  PredictionOutput,
+  PredictionRecord,
+  RecommendationOutput,
+  RecommendationRequest,
+  StudentInput,
+} from '@/types/prediction';
 import type {
   ActivityCorrectionPayload,
   ActivityRecord,
@@ -143,6 +149,18 @@ export const api = {
   ): Promise<ApiResponse<PredictionOutput>> {
     return request<PredictionOutput>(`/predict/from-activity?window_days=${windowDays}`, {
       method: 'POST',
+      ...opts,
+    });
+  },
+
+  // --- LLM recommendations (roadmap Phase 6) ---
+  getRecommendation(
+    payload: RecommendationRequest,
+    opts: RequestOptions,
+  ): Promise<ApiResponse<RecommendationOutput>> {
+    return request<RecommendationOutput>('/predict/recommendation', {
+      method: 'POST',
+      body: JSON.stringify(payload),
       ...opts,
     });
   },
