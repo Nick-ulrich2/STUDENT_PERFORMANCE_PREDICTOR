@@ -21,7 +21,7 @@ Fichiers attendus :
 - `SUPABASE_JWT_AUDIENCE` (optionnel, défaut `authenticated`)
 - `FRONTEND_ORIGIN=http://127.0.0.1:3001`
 - `GROQ_API_KEY` (optionnel — active les recommandations IA, voir *Recommandations IA* ci-dessous)
-- `GROQ_MODEL` (optionnel, défaut `llama-3.1-8b-instant`)
+- `GROQ_MODEL` (optionnel, défaut `qwen/qwen3.8-27b`)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`

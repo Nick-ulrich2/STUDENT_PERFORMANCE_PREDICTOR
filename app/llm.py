@@ -15,7 +15,13 @@ import httpx
 logger = logging.getLogger("app.llm")
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.1-8b-instant"
+# Groq's free-tier model catalog changes over time (deprecations/renames); if this
+# 404s, run `curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer
+# $GROQ_API_KEY"` to see what's currently available, or set GROQ_MODEL in .env.
+# Avoid "reasoning" models here (e.g. openai/gpt-oss-*): they spend max_tokens on
+# a hidden chain-of-thought and can return an empty "content" before ever writing
+# the final answer, unlike a plain instruct model such as this one.
+DEFAULT_MODEL = "qwen/qwen3.8-27b"
 
 HUMAN_LABELS = {
     "Attendance": "l'assiduité",
