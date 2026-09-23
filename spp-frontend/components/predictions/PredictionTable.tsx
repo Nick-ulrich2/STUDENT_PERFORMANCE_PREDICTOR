@@ -1,19 +1,8 @@
 'use client';
 
+import { Calendar, Inbox, RefreshCw, User } from 'lucide-react';
 import type { PredictionRecord } from '@/types/prediction';
-import { Spinner } from '@/components/ui/Spinner';
-
-type Column = {
-  key: keyof PredictionRecord | 'actions';
-  label: string;
-};
-
-const COLUMNS: Column[] = [
-  { key: 'created_at', label: 'Date' },
-  { key: 'user_id', label: 'Utilisateur' },
-  { key: 'predicted_score', label: 'Score prédit' },
-  { key: 'actions', label: '' },
-];
+import { ScoreBadge } from '@/components/ui/ScoreBadge';
 
 function formatDate(iso: string): string {
   try {
@@ -35,6 +24,18 @@ type Props = {
   onRefresh?: () => void;
 };
 
+function SkeletonRow() {
+  return (
+    <div className="card flex items-center justify-between gap-4">
+      <div className="flex flex-1 items-center gap-4">
+        <div className="skeleton h-4 w-32" />
+        <div className="skeleton h-4 w-24" />
+      </div>
+      <div className="skeleton h-7 w-16 rounded-full" />
+    </div>
+  );
+}
+
 export function PredictionTable({
   records,
   loading,
@@ -45,8 +46,10 @@ export function PredictionTable({
 }: Props) {
   if (loading) {
     return (
-      <div className="card flex items-center gap-3">
-        <Spinner label="Chargement…" />
+      <div className="grid gap-3">
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
       </div>
     );
   }
@@ -58,43 +61,48 @@ export function PredictionTable({
     );
   }
   if (records.length === 0) {
-    return <div className="card text-sm text-ink/60">{emptyMessage}</div>;
+    return (
+      <div className="card flex flex-col items-center gap-2 py-10 text-center">
+        <Inbox size={28} strokeWidth={1.5} className="text-ink/30" aria-hidden="true" />
+        <p className="text-sm text-ink/60">{emptyMessage}</p>
+      </div>
+    );
   }
+
   return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-line text-ink/60">
-            {COLUMNS.filter((c) => (c.key === 'user_id' ? showUser : true)).map((c) => (
-              <th key={c.key} className="py-2 pr-4 font-semibold">
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {records.map((record) => (
-            <tr key={record.id} className="border-b border-line/60 last:border-0">
-              <td className="py-3 pr-4">{formatDate(record.created_at)}</td>
-              {showUser && <td className="py-3 pr-4 font-mono text-xs">{record.user_id}</td>}
-              <td className="py-3 pr-4 font-bold text-navy">
-                {Number(record.predicted_score).toFixed(1)}
-              </td>
-              <td className="py-3 pr-4 text-right">
-                {onRefresh && (
-                  <button
-                    type="button"
-                    onClick={onRefresh}
-                    className="rounded-full border border-line px-3 py-1 text-xs font-bold text-navy hover:border-navy"
-                  >
-                    Actualiser
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid gap-3">
+      {onRefresh && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-bold text-navy hover:border-navy"
+          >
+            <RefreshCw size={13} strokeWidth={2.5} aria-hidden="true" />
+            Actualiser
+          </button>
+        </div>
+      )}
+      {records.map((record) => (
+        <div
+          key={record.id}
+          className="card card-hover flex flex-wrap items-center justify-between gap-3"
+        >
+          <div className="flex flex-wrap items-center gap-4 text-sm text-ink/70">
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar size={14} strokeWidth={2} className="text-ink/40" aria-hidden="true" />
+              {formatDate(record.created_at)}
+            </span>
+            {showUser && (
+              <span className="inline-flex items-center gap-1.5 font-mono text-xs">
+                <User size={14} strokeWidth={2} className="text-ink/40" aria-hidden="true" />
+                {record.user_id}
+              </span>
+            )}
+          </div>
+          <ScoreBadge score={Number(record.predicted_score)} />
+        </div>
+      ))}
     </div>
   );
 }

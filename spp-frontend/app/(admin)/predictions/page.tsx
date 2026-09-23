@@ -1,5 +1,6 @@
 'use client';
 
+import { ListChecks } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
 import { SectionIntro } from '@/components/ui/SectionIntro';
@@ -14,6 +15,7 @@ function AdminPredictions() {
     <AppShell>
       <section className="container section-pad">
         <SectionIntro
+          icon={<ListChecks size={14} strokeWidth={2.5} aria-hidden="true" />}
           eyebrow="Supervision"
           title="Toutes les prédictions"
           description="Liste complète des prédictions effectuées via l’API."

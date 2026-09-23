@@ -1,23 +1,19 @@
 'use client';
 
 import { useEffect } from 'react';
+import { AlertTriangle, Sparkles, TrendingUp } from 'lucide-react';
 import type { PredictionOutput } from '@/types/prediction';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
+import { ScoreRing } from '@/components/ui/ScoreRing';
 import { FeatureChart } from '@/components/predictions/FeatureChart';
 import { useAuth } from '@/hooks/useAuth';
 import { useRecommendation } from '@/hooks/useRecommendation';
+import { scoreTone } from '@/lib/scoreTone';
 
 type ResultsDisplayProps = {
   result: PredictionOutput;
 };
-
-function scoreTone(score: number): { label: string; color: string } {
-  if (score >= 80) return { label: 'Excellent', color: 'text-navy' };
-  if (score >= 65) return { label: 'Bon', color: 'text-navy' };
-  if (score >= 50) return { label: 'À renforcer', color: 'text-amber-600' };
-  return { label: 'Risque', color: 'text-red-600' };
-}
 
 const HUMAN_LABELS: Record<string, string> = {
   Attendance: 'Assiduité',
@@ -47,21 +43,24 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
-      <div className="card md:col-span-1">
-        <div className="eyebrow">Score prédit</div>
-        <p className="mt-3 font-display text-6xl text-navy">
-          {result.predicted_score.toFixed(1)}
-          <span className="text-2xl text-ink/40">/100</span>
-        </p>
-        <p className={`mt-2 text-sm font-bold ${tone.color}`}>{tone.label}</p>
+      <div className="card flex flex-col items-center text-center md:col-span-1">
+        <div className="eyebrow self-start">Score prédit</div>
+        <div className="mt-4">
+          <ScoreRing score={result.predicted_score} label={tone.label} tone={tone.tone} />
+        </div>
         <p className="mt-4 text-xs text-ink/55">Modèle : {result.model_name}</p>
-        <div className="mt-6">
-          <Button href="/predict" secondary>Nouvelle prédiction</Button>
+        <div className="mt-6 w-full">
+          <Button href="/predict" secondary fullWidth>
+            Nouvelle prédiction
+          </Button>
         </div>
       </div>
 
       <div className="card md:col-span-2">
-        <div className="eyebrow">Variables les plus influentes</div>
+        <div className="eyebrow flex items-center gap-2">
+          <TrendingUp size={14} strokeWidth={2.5} aria-hidden="true" />
+          Variables les plus influentes
+        </div>
         <h3 className="mt-2 font-display text-2xl text-navy">
           Ce qui compte le plus
         </h3>
@@ -71,7 +70,10 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
       </div>
 
       <div className="card md:col-span-3">
-        <div className="eyebrow">Recommandation</div>
+        <div className="eyebrow flex items-center gap-2">
+          <Sparkles size={14} strokeWidth={2.5} aria-hidden="true" />
+          Recommandation
+        </div>
         <h3 className="mt-2 font-display text-2xl text-navy">Analyse personnalisée</h3>
         <div className="mt-4">
           {loading && <Spinner label="Génération de la recommandation…" />}
@@ -92,7 +94,10 @@ export function ResultsDisplay({ result }: ResultsDisplayProps) {
 
       {result.below_threshold.length > 0 && (
         <div className="card md:col-span-3">
-          <div className="eyebrow">Points d’attention</div>
+          <div className="eyebrow flex items-center gap-2">
+            <AlertTriangle size={14} strokeWidth={2.5} aria-hidden="true" />
+            Points d’attention
+          </div>
           <h3 className="mt-2 font-display text-2xl text-navy">
             Variables sous le seuil recommandé
           </h3>

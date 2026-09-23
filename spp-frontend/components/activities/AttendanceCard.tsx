@@ -1,5 +1,6 @@
 'use client';
 
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { ActivityRecord, AttendanceStatus } from '@/types/activity';
 
@@ -32,10 +33,15 @@ export function AttendanceCard({ activities, busy, onMark }: Props) {
       {todayMark ? (
         <>
           <p
-            className={`font-display text-2xl ${
+            className={`flex items-center gap-2 font-display text-2xl ${
               todayMark.status === 'present' ? 'text-navy' : 'text-red-600'
             }`}
           >
+            {todayMark.status === 'present' ? (
+              <CheckCircle2 size={22} strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <XCircle size={22} strokeWidth={2} aria-hidden="true" />
+            )}
             {todayMark.status === 'present' ? 'Présent' : 'Absent'}
           </p>
           <p className="text-xs text-ink/55">
@@ -55,9 +61,11 @@ export function AttendanceCard({ activities, busy, onMark }: Props) {
           <p className="text-sm text-ink/60">Pas encore pointé aujourd’hui.</p>
           <div className="flex gap-2">
             <Button onClick={() => onMark('present')} disabled={busy} fullWidth>
+              <CheckCircle2 size={14} strokeWidth={2.5} className="mr-2" aria-hidden="true" />
               Présent
             </Button>
             <Button onClick={() => onMark('absent')} disabled={busy} secondary fullWidth>
+              <XCircle size={14} strokeWidth={2.5} className="mr-2" aria-hidden="true" />
               Absent
             </Button>
           </div>

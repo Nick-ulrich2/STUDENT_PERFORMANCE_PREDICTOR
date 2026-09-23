@@ -1,9 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { Activity, History } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
 import { SectionIntro } from '@/components/ui/SectionIntro';
+import { StreakBadge } from '@/components/ui/StreakBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivities } from '@/hooks/useActivities';
 import { useProfileAttributes } from '@/hooks/useProfileAttributes';
@@ -14,6 +16,7 @@ import { ActivityLogList } from '@/components/activities/ActivityLogList';
 import { ProfileAttributesForm } from '@/components/activities/ProfileAttributesForm';
 import { WeeklyFeaturesSummary } from '@/components/activities/WeeklyFeaturesSummary';
 import type { AttendanceStatus, TrackedActivityType } from '@/types/activity';
+import { computeStreak } from '@/lib/streak';
 
 const TRACKED_TYPES: TrackedActivityType[] = ['study_session', 'tutoring_session'];
 
@@ -87,9 +90,11 @@ function TrackerPage() {
     <AppShell>
       <section className="container section-pad">
         <SectionIntro
+          icon={<Activity size={14} strokeWidth={2.5} aria-hidden="true" />}
           eyebrow="Suivi d’habitudes"
           title="Enregistrez vos activités"
           description="Démarrez et arrêtez vos sessions au fil de la journée : la prédiction se base sur ce que vous avez réellement fait, pas sur une estimation saisie à la main."
+          aside={<StreakBadge days={computeStreak(activities)} />}
         />
 
         {actionError && (
@@ -118,7 +123,10 @@ function TrackerPage() {
         </div>
 
         <div className="mt-6">
-          <h3 className="font-display text-xl text-navy">Historique récent</h3>
+          <h3 className="flex items-center gap-2 font-display text-xl text-navy">
+            <History size={18} strokeWidth={2} aria-hidden="true" />
+            Historique récent
+          </h3>
           <div className="mt-3">
             <ActivityLogList activities={activities} busy={activitiesLoading} onCorrect={handleCorrect} />
           </div>

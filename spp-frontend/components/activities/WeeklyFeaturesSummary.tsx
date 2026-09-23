@@ -1,5 +1,6 @@
 'use client';
 
+import { BarChart3, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import type { AggregatedFeatures } from '@/types/activity';
@@ -27,14 +28,23 @@ export function WeeklyFeaturesSummary({ features, loading, error, predicting, on
   return (
     <div className="card grid gap-4">
       <div>
-        <div className="eyebrow">Cette semaine</div>
+        <div className="eyebrow flex items-center gap-2">
+          <BarChart3 size={14} strokeWidth={2.5} aria-hidden="true" />
+          Cette semaine
+        </div>
         <h3 className="mt-1 font-display text-2xl text-navy">Vos habitudes agrégées</h3>
         <p className="mt-1 text-sm text-ink/60">
           Calculées automatiquement à partir de vos activités des 7 derniers jours.
         </p>
       </div>
 
-      {loading && <Spinner label="Calcul en cours…" />}
+      {loading && (
+        <ul className="grid gap-2 md:grid-cols-2">
+          {FEATURE_KEYS.map((key) => (
+            <li key={key} className="skeleton h-10 rounded-xl" />
+          ))}
+        </ul>
+      )}
       {!loading && error && (
         <div className="alert alert-error" role="alert">
           {error}
@@ -52,7 +62,14 @@ export function WeeklyFeaturesSummary({ features, loading, error, predicting, on
       )}
 
       <Button onClick={onPredict} disabled={predicting || loading || Boolean(error)} fullWidth>
-        {predicting ? <Spinner label="Prédiction en cours…" /> : 'Lancer la prédiction'}
+        {predicting ? (
+          <Spinner label="Prédiction en cours…" />
+        ) : (
+          <>
+            <Sparkles size={14} strokeWidth={2.5} className="mr-2" aria-hidden="true" />
+            Lancer la prédiction
+          </>
+        )}
       </Button>
     </div>
   );

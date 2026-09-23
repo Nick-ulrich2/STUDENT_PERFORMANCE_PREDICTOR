@@ -1,5 +1,6 @@
 'use client';
 
+import { History } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
 import { SectionIntro } from '@/components/ui/SectionIntro';
@@ -14,6 +15,7 @@ function HistoryInner() {
     <AppShell>
       <section className="container section-pad">
         <SectionIntro
+          icon={<History size={14} strokeWidth={2.5} aria-hidden="true" />}
           eyebrow="Historique"
           title="Vos prédictions passées"
           description="Consultez la liste complète des prédictions enregistrées pour votre compte."

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { CheckCircle2, IdCard } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ProfileAttributesResponse } from '@/types/activity';
@@ -50,7 +51,13 @@ export function ProfileAttributesForm({ attributes, saving, onSave }: Props) {
   return (
     <div className="card grid gap-4">
       <div>
-        <div className="eyebrow">Profil</div>
+        <div className="eyebrow flex items-center gap-2">
+          <IdCard size={14} strokeWidth={2.5} aria-hidden="true" />
+          Profil
+          {complete && (
+            <CheckCircle2 size={14} strokeWidth={2.5} className="text-teal" aria-hidden="true" />
+          )}
+        </div>
         <h3 className="mt-1 font-display text-2xl text-navy">Vos informations stables</h3>
         <p className="mt-1 text-sm text-ink/60">
           Ces informations changent rarement : ce ne sont pas des activités à démarrer/arrêter.
