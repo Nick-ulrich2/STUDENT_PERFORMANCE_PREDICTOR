@@ -5,6 +5,9 @@
 app/.env
 app/.env.*
 !app/.env.example
+spp-frontend/.env.local
+spp-frontend/.env.local.*
+!spp-frontend/.env.local.example
 
 # Python local artifacts
 __pycache__/
