@@ -1,8 +1,9 @@
 'use client';
 
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, Flame, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { ActivityRecord, AttendanceStatus } from '@/types/activity';
+import { computeStreakForType } from '@/lib/streak';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -27,9 +28,19 @@ export function AttendanceCard({ activities, busy, onMark }: Props) {
       isToday(a.started_at),
   );
 
+  const streakDays = computeStreakForType(activities, 'attendance');
+
   return (
     <div className="card flex flex-col gap-3">
-      <div className="eyebrow">Assiduité du jour</div>
+      <div className="eyebrow flex items-center justify-between gap-2">
+        Assiduité du jour
+        {streakDays > 0 && (
+          <span className="flex items-center gap-1 normal-case text-ink/45">
+            <Flame size={12} strokeWidth={2.5} aria-hidden="true" />
+            {streakDays}
+          </span>
+        )}
+      </div>
       {todayMark ? (
         <>
           <p

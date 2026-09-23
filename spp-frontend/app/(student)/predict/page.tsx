@@ -16,7 +16,7 @@ import { ActivityLogList } from '@/components/activities/ActivityLogList';
 import { ProfileAttributesForm } from '@/components/activities/ProfileAttributesForm';
 import { WeeklyFeaturesSummary } from '@/components/activities/WeeklyFeaturesSummary';
 import type { AttendanceStatus, TrackedActivityType } from '@/types/activity';
-import { computeStreak } from '@/lib/streak';
+import { computeStreak, computeStreakForType } from '@/lib/streak';
 
 const TRACKED_TYPES: TrackedActivityType[] = ['study_session', 'tutoring_session'];
 
@@ -115,6 +115,7 @@ function TrackerPage() {
               activityType={type}
               active={activeByType(type)}
               busy={activitiesLoading}
+              streakDays={computeStreakForType(activities, type)}
               onStart={handleStart}
               onStop={handleStop}
             />

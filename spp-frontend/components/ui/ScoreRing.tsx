@@ -42,6 +42,11 @@ export function ScoreRing({ score, label, tone, size = 168 }: Props) {
       className="relative inline-flex items-center justify-center"
       style={{ width: size, height: size }}
     >
+      <div
+        className="absolute inset-0 -z-10 rounded-full blur-2xl"
+        style={{ background: `radial-gradient(circle, ${color}26 0%, transparent 70%)` }}
+        aria-hidden="true"
+      />
       <svg viewBox="0 0 120 120" width={size} height={size} className="-rotate-90">
         <circle
           cx="60"

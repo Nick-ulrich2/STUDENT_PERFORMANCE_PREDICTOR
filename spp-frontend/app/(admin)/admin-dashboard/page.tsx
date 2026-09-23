@@ -30,6 +30,7 @@ function AdminDashboard() {
             <p className="mt-1 text-sm text-ink/60">
               {loading ? 'Chargement…' : error ? 'Indisponible' : 'tous utilisateurs confondus'}
             </p>
+            <div className="mt-3 h-1 w-10 rounded-full bg-teal" />
           </div>
           <div className="card card-hover">
             <div className="eyebrow flex items-center gap-2">
@@ -40,6 +41,7 @@ function AdminDashboard() {
             <div className="mt-4">
               <Button href="/predictions">Voir la liste</Button>
             </div>
+            <div className="mt-3 h-1 w-10 rounded-full bg-navy" />
           </div>
           <div className="card card-hover">
             <div className="eyebrow flex items-center gap-2">
@@ -50,6 +52,7 @@ function AdminDashboard() {
               Cette section est réservée aux comptes avec le rôle <strong>admin</strong>,
               vérifié côté serveur sur chaque requête.
             </p>
+            <div className="mt-3 h-1 w-10 rounded-full" style={{ backgroundColor: '#b45309' }} />
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Play, Square } from 'lucide-react';
+import { Flame, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { ActivityRecord, TrackedActivityType } from '@/types/activity';
 
@@ -24,11 +24,12 @@ type Props = {
   activityType: TrackedActivityType;
   active: ActivityRecord | null;
   busy: boolean;
+  streakDays?: number;
   onStart: (type: TrackedActivityType) => void;
   onStop: (id: number) => void;
 };
 
-export function ActivityTimer({ activityType, active, busy, onStart, onStop }: Props) {
+export function ActivityTimer({ activityType, active, busy, streakDays = 0, onStart, onStop }: Props) {
   // Re-render every second so the elapsed time ticks live while a session runs.
   const [, forceTick] = useState(0);
 
@@ -40,9 +41,17 @@ export function ActivityTimer({ activityType, active, busy, onStart, onStop }: P
 
   return (
     <div className="card flex flex-col gap-3">
-      <div className="eyebrow flex items-center gap-2">
-        {active && <span className="pulse-dot" aria-hidden="true" />}
-        {LABELS[activityType]}
+      <div className="eyebrow flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2">
+          {active && <span className="pulse-dot" aria-hidden="true" />}
+          {LABELS[activityType]}
+        </span>
+        {streakDays > 0 && (
+          <span className="flex items-center gap-1 normal-case text-ink/45">
+            <Flame size={12} strokeWidth={2.5} aria-hidden="true" />
+            {streakDays}
+          </span>
+        )}
       </div>
       {active ? (
         <>

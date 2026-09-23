@@ -29,6 +29,7 @@ export function HeroSection() {
         </div>
         <div className="reveal delay-1 relative">
           <div className="absolute -right-20 -top-16 h-52 w-52 rounded-full bg-mint/70 blur-3xl" />
+          <div className="absolute -bottom-10 -left-12 h-40 w-40 rounded-full bg-sky/60 blur-3xl" />
           <div className="relative rounded-[28px] border border-line bg-white p-5 shadow-[0_24px_70px_rgba(18,61,89,.12)] md:p-7">
             <div className="flex items-center justify-between">
               <div>
