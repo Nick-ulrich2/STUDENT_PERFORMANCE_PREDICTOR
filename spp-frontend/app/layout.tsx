@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Manrope, DM_Serif_Display } from 'next/font/google';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
+import { AuthProvider } from '@/hooks/useAuth';
 import './globals.css';
 
 const manrope = Manrope({
@@ -62,7 +63,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={`${manrope.variable} ${dmSerif.variable}`}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

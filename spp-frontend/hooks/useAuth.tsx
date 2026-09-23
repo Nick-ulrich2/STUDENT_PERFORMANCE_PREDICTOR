@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type {
   AuthUser,
@@ -66,7 +66,25 @@ function buildSession(
   };
 }
 
-export function useAuth() {
+type AuthContextValue = AuthState & {
+  login: (credentials: LoginCredentials) => Promise<boolean>;
+  register: (credentials: RegisterCredentials) => Promise<boolean>;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// A single shared session lookup for the whole app. Previously this was a
+// bare hook (no Context) called independently by Navbar, ProtectedRoute,
+// every page and ResultsDisplay — each instance ran its own async
+// getSession() and could resolve at a slightly different time. On a hard
+// reload landing directly on a protected route, that let a page's own data
+// hooks (useActivities, useFeatures, ...) fire with token=null a moment
+// before this instance's session restore finished, briefly showing
+// "Authentification requise" even though the user was, in fact, signed in.
+// One provider, one resolution, no race.
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(initialState);
 
   useEffect(() => {
@@ -202,14 +220,21 @@ export function useAuth() {
     setState({ ...initialState, loading: false });
   }, []);
 
-  return {
-    user: state.user,
-    token: state.token,
-    loading: state.loading,
-    error: state.error,
+  const value: AuthContextValue = {
+    ...state,
     login,
     register,
     logout,
     isAuthenticated: Boolean(state.user && state.token),
   };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth() must be used within <AuthProvider>.');
+  }
+  return ctx;
 }
