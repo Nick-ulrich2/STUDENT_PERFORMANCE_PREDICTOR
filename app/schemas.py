@@ -69,6 +69,23 @@ class RecommendationOutput(BaseModel):
     )
 
 
+# --- Admin panel: user management via the Supabase Admin API ---
+
+class UserSummary(BaseModel):
+    id: str
+    email: str | None = None
+    role: Literal["student", "admin"]
+    created_at: str | None = None
+    last_sign_in_at: str | None = None
+    email_confirmed_at: str | None = None
+
+
+class RoleUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["student", "admin"]
+
+
 # --- Habit tracker: raw activity logs, aggregated into the schemas above ---
 
 class ActivityStart(BaseModel):

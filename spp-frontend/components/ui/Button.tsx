@@ -9,7 +9,6 @@ type ButtonProps = {
   secondary?: boolean;
   fullWidth?: boolean;
   className?: string;
-  ariaLabel?: string;
 };
 
 export function Button({
@@ -21,7 +20,6 @@ export function Button({
   secondary = false,
   fullWidth = false,
   className = '',
-  ariaLabel,
 }: ButtonProps) {
   const base =
     'inline-flex min-h-[48px] items-center justify-center rounded-full px-5 text-sm font-bold';
@@ -34,20 +32,14 @@ export function Button({
 
   if (href) {
     return (
-      <a className={cls} href={href} aria-label={ariaLabel}>
+      <a className={cls} href={href}>
         {children}
       </a>
     );
   }
 
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={cls}
-      aria-label={ariaLabel}
-    >
+    <button type={type} onClick={onClick} disabled={disabled} className={cls}>
       {children}
     </button>
   );

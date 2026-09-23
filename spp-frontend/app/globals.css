@@ -153,12 +153,6 @@ a:focus-visible {
   border: 1px solid #f1c8bf;
 }
 
-.alert-info {
-  background: var(--sky);
-  color: var(--navy);
-  border: 1px solid #b6dbe3;
-}
-
 .skeleton {
   background: linear-gradient(90deg, #ece6d8 25%, #f3eedf 37%, #ece6d8 63%);
   background-size: 400% 100%;

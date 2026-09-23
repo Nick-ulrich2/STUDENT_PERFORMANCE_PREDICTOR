@@ -62,7 +62,7 @@ function StudentDashboard() {
                 <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" />
               </Link>
             </div>
-            <div className="mt-3 h-1 w-10 rounded-full" style={{ backgroundColor: '#b45309' }} />
+            <div className="mt-3 h-1 w-10 rounded-full bg-amber" />
           </div>
         </div>
 

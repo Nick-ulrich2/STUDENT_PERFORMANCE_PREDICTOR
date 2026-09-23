@@ -15,7 +15,7 @@ os.environ.setdefault("SUPABASE_ANON_KEY", "anon-key")
 
 from app.main import app, pipeline_state
 from app.model_loader import load_pipeline
-from app import llm, repository
+from app import admin_users, llm, repository
 
 
 TEST_PRIVATE_KEY = ec.generate_private_key(ec.SECP256R1())
@@ -789,3 +789,115 @@ def test_recommendation_never_leaks_raw_student_data(client, monkeypatch):
     payload = {**_recommendation_payload(), "Attendance": 85}
     response = client.post("/predict/recommendation", json=payload, headers=_headers())
     assert response.status_code == 422
+
+
+# --- Admin panel: user management ---
+
+class FakeAdminApiResponse:
+    def __init__(self, status_code=200, body=None):
+        self.status_code = status_code
+        self._body = body if body is not None else {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            request = httpx.Request("GET", "https://example.supabase.co/auth/v1/admin/users")
+            response = httpx.Response(self.status_code, request=request)
+            raise httpx.HTTPStatusError("error", request=request, response=response)
+
+    def json(self):
+        return self._body
+
+
+def _fake_users_page():
+    return {
+        "users": [
+            {
+                "id": "user-123",
+                "email": "admin@example.com",
+                "app_metadata": {"role": "admin"},
+                "created_at": "2026-01-01T00:00:00Z",
+                "last_sign_in_at": "2026-09-20T00:00:00Z",
+                "email_confirmed_at": "2026-01-01T00:00:00Z",
+            },
+            {
+                "id": "user-456",
+                "email": "student@example.com",
+                "app_metadata": {"role": "student"},
+                "created_at": "2026-02-01T00:00:00Z",
+                "last_sign_in_at": None,
+                "email_confirmed_at": "2026-02-01T00:00:00Z",
+            },
+        ]
+    }
+
+
+def test_list_users_requires_admin(client):
+    response = client.get("/admin/users", headers=_headers(role="student"))
+    assert response.status_code == 403
+
+
+def test_list_users_requires_token(client):
+    response = client.get("/admin/users")
+    assert response.status_code == 401
+
+
+def test_list_users_success(client, monkeypatch):
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test-key")
+    monkeypatch.setattr(
+        admin_users.httpx, "get", lambda *a, **k: FakeAdminApiResponse(body=_fake_users_page())
+    )
+    response = client.get("/admin/users", headers=_headers(role="admin"))
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 2
+    assert body[0]["role"] == "admin"
+    assert body[1]["role"] == "student"
+
+
+def test_list_users_missing_service_role_key_returns_503(client, monkeypatch):
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    response = client.get("/admin/users", headers=_headers(role="admin"))
+    assert response.status_code == 503
+
+
+def test_update_user_role_success(client, monkeypatch):
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test-key")
+    monkeypatch.setattr(
+        admin_users.httpx,
+        "put",
+        lambda *a, **k: FakeAdminApiResponse(
+            body={"id": "user-456", "email": "student@example.com", "app_metadata": {"role": "admin"}}
+        ),
+    )
+    response = client.put(
+        "/admin/users/user-456/role", json={"role": "admin"}, headers=_headers(role="admin")
+    )
+    assert response.status_code == 200
+    assert response.json()["role"] == "admin"
+
+
+def test_update_user_role_requires_admin(client):
+    response = client.put(
+        "/admin/users/user-456/role", json={"role": "admin"}, headers=_headers(role="student")
+    )
+    assert response.status_code == 403
+
+
+def test_update_user_role_rejects_self_change(client):
+    # _token() always issues sub="user-123", so an admin token targeting
+    # its own id must be refused regardless of the payload.
+    response = client.put(
+        "/admin/users/user-123/role", json={"role": "student"}, headers=_headers(role="admin")
+    )
+    assert response.status_code == 400
+
+
+def test_update_user_role_upstream_error_returns_503(client, monkeypatch):
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test-key")
+    monkeypatch.setattr(
+        admin_users.httpx, "put", lambda *a, **k: FakeAdminApiResponse(status_code=500)
+    )
+    response = client.put(
+        "/admin/users/user-456/role", json={"role": "admin"}, headers=_headers(role="admin")
+    )
+    assert response.status_code == 503

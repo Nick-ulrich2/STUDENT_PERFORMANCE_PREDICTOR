@@ -1,20 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ScoreTone } from '@/lib/scoreTone';
+import { TONE_COLORS, type ScoreTone } from '@/lib/scoreTone';
 
 type Props = {
   score: number;
   label: string;
   tone: ScoreTone;
   size?: number;
-};
-
-const TONE_COLORS: Record<ScoreTone, string> = {
-  excellent: '#2d7770',
-  good: '#123d59',
-  warning: '#b45309',
-  risk: '#b91c1c',
 };
 
 const RADIUS = 52;
@@ -33,7 +26,7 @@ export function ScoreRing({ score, label, tone, size = 168 }: Props) {
 
   const clamped = Math.max(0, Math.min(100, display));
   const offset = CIRCUMFERENCE * (1 - clamped / 100);
-  const color = TONE_COLORS[tone];
+  const color = TONE_COLORS[tone].text;
 
   return (
     <div

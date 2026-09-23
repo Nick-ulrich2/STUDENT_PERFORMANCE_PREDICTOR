@@ -16,12 +16,16 @@ from app.schemas import (
     ProfileAttributes,
     RecommendationOutput,
     RecommendationRequest,
+    RoleUpdateRequest,
     StudentInput,
+    UserSummary,
 )
 from app.model_loader import load_pipeline
 from app.auth import CurrentUser, require_admin, require_user
 from app import repository
 from app.llm import RecommendationError, generate_recommendation
+from app import admin_users
+from app.admin_users import AdminUsersError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("app.main")
@@ -207,6 +211,34 @@ def list_all_predictions(current_user: CurrentUser = Depends(require_admin)):
             status_code=500,
             detail="Échec de lecture de la supervision administrateur.",
         ) from exc
+
+
+# --- Admin panel: user management (Supabase Admin API, service_role only,
+# never exposed to the frontend) ---
+
+@app.get("/admin/users", response_model=list[UserSummary])
+def list_users(current_user: CurrentUser = Depends(require_admin)):
+    try:
+        return admin_users.list_users()
+    except AdminUsersError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.put("/admin/users/{user_id}/role", response_model=UserSummary)
+def update_user_role(
+    user_id: str, data: RoleUpdateRequest, current_user: CurrentUser = Depends(require_admin)
+):
+    # An admin can promote or demote any other account, but never their own —
+    # this is the one guardrail that prevents an admin from locking
+    # themselves (or, worse, every admin) out by mis-clicking.
+    if user_id == current_user["id"]:
+        raise HTTPException(
+            status_code=400, detail="Vous ne pouvez pas modifier votre propre rôle."
+        )
+    try:
+        return admin_users.set_user_role(user_id=user_id, role=data.role)
+    except AdminUsersError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 # --- Habit tracker: raw activity logs (start/stop/correction cycle) ---

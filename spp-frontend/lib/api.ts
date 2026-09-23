@@ -4,8 +4,8 @@ import type {
   PredictionRecord,
   RecommendationOutput,
   RecommendationRequest,
-  StudentInput,
 } from '@/types/prediction';
+import type { UserRole, UserSummary } from '@/types/auth';
 import type {
   ActivityCorrectionPayload,
   ActivityRecord,
@@ -61,13 +61,6 @@ async function request<T>(
 }
 
 export const api = {
-  predict(input: StudentInput, opts: RequestOptions): Promise<ApiResponse<PredictionOutput>> {
-    return request<PredictionOutput>('/predict', {
-      method: 'POST',
-      body: JSON.stringify(input),
-      ...opts,
-    });
-  },
   getMyPredictions(opts: RequestOptions): Promise<ApiResponse<PredictionRecord[]>> {
     return request<PredictionRecord[]>('/predictions/me', { method: 'GET', ...opts });
   },
@@ -161,6 +154,22 @@ export const api = {
     return request<RecommendationOutput>('/predict/recommendation', {
       method: 'POST',
       body: JSON.stringify(payload),
+      ...opts,
+    });
+  },
+
+  // --- Admin panel: user management ---
+  getUsers(opts: RequestOptions): Promise<ApiResponse<UserSummary[]>> {
+    return request<UserSummary[]>('/admin/users', { method: 'GET', ...opts });
+  },
+  updateUserRole(
+    userId: string,
+    role: UserRole,
+    opts: RequestOptions,
+  ): Promise<ApiResponse<UserSummary>> {
+    return request<UserSummary>(`/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
       ...opts,
     });
   },

@@ -25,3 +25,13 @@ export interface AuthError {
   message: string;
   code?: string;
 }
+
+// Admin panel: one row of the Supabase Admin API user list (GET /admin/users).
+export interface UserSummary {
+  id: string;
+  email: string | null;
+  role: UserRole;
+  created_at: string | null;
+  last_sign_in_at: string | null;
+  email_confirmed_at: string | null;
+}

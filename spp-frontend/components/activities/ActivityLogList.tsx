@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { BookOpen, CalendarCheck, History, Pencil, Users } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { TONE_COLORS } from '@/lib/scoreTone';
+import { formatDateTime } from '@/lib/format';
 import type { ActivityRecord } from '@/types/activity';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -17,21 +19,18 @@ const TYPE_ICONS: Record<string, typeof BookOpen> = {
   attendance: CalendarCheck,
 };
 
+// Reuses the same tone palette as scores (lib/scoreTone.ts) for statuses that
+// map onto it semantically — "in progress"/"present" as the positive/teal
+// tone, "completed" as the neutral navy tone, "absent" as risk/red — instead
+// of hand-picking the same hex values a second time. "Cancelled" has no
+// score-tone equivalent, so it keeps its own neutral gray.
 const STATUS_STYLES: Record<string, { label: string; text: string; bg: string }> = {
-  in_progress: { label: 'En cours', text: '#2d7770', bg: '#d7eee4' },
-  completed: { label: 'Terminée', text: '#123d59', bg: '#dff0f4' },
+  in_progress: { label: 'En cours', ...TONE_COLORS.excellent },
+  completed: { label: 'Terminée', ...TONE_COLORS.good },
   cancelled: { label: 'Annulée', text: '#57534e', bg: '#e7e5e4' },
-  present: { label: 'Présent', text: '#2d7770', bg: '#d7eee4' },
-  absent: { label: 'Absent', text: '#b91c1c', bg: '#fee2e2' },
+  present: { label: 'Présent', ...TONE_COLORS.excellent },
+  absent: { label: 'Absent', ...TONE_COLORS.risk },
 };
-
-function formatDateTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-  } catch {
-    return iso;
-  }
-}
 
 type Props = {
   activities: ActivityRecord[];
@@ -75,8 +74,8 @@ export function ActivityLogList({ activities, busy, onCorrect }: Props) {
                     {TYPE_LABELS[a.activity_type] ?? a.activity_type}
                   </p>
                   <p className="text-xs text-ink/55">
-                    {formatDateTime(a.started_at)}
-                    {a.ended_at ? ` → ${formatDateTime(a.ended_at)}` : ''}
+                    {formatDateTime(a.started_at, 'short')}
+                    {a.ended_at ? ` → ${formatDateTime(a.ended_at, 'short')}` : ''}
                   </p>
                 </div>
               </div>

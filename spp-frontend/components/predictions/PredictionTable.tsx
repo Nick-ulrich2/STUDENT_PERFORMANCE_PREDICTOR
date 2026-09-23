@@ -3,17 +3,7 @@
 import { Calendar, Inbox, RefreshCw, User } from 'lucide-react';
 import type { PredictionRecord } from '@/types/prediction';
 import { ScoreBadge } from '@/components/ui/ScoreBadge';
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString('fr-FR', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  } catch {
-    return iso;
-  }
-}
+import { formatDateTime } from '@/lib/format';
 
 type Props = {
   records: PredictionRecord[];
@@ -91,7 +81,7 @@ export function PredictionTable({
           <div className="flex flex-wrap items-center gap-4 text-sm text-ink/70">
             <span className="inline-flex items-center gap-1.5">
               <Calendar size={14} strokeWidth={2} className="text-ink/40" aria-hidden="true" />
-              {formatDate(record.created_at)}
+              {formatDateTime(record.created_at)}
             </span>
             {showUser && (
               <span className="inline-flex items-center gap-1.5 font-mono text-xs">
