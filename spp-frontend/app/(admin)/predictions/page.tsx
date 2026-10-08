@@ -62,7 +62,7 @@ export default function AdminPredictionsPage() {
               />
             </div>
             <span className="tiny muted">
-              {query ? `${shown.length} prédictions affichées` : `${all.length} prédictions · du plus récent au plus ancien`}
+              {loading ? 'Chargement…' : query ? `${shown.length} prédictions affichées` : `${all.length} prédictions · du plus récent au plus ancien`}
             </span>
           </div>
           {loading ? (

@@ -36,19 +36,25 @@ export function PredictionsTable({ records, emailOf, emptyText }: PredictionsTab
             return (
               <tr key={r.id}>
                 <td data-l="Date">
-                  {relativeDay(r.created_at)} <span className="muted tiny">{formatTime(r.created_at)}</span>
+                  <span>
+                    {relativeDay(r.created_at)} <span className="muted tiny">{formatTime(r.created_at)}</span>
+                  </span>
                 </td>
                 <td data-l="Étudiant" className="em">
                   {emailOf(r.user_id)}
                 </td>
                 <td data-l="Score">
-                  <span className="sc" style={{ color: TONE_VARS[scoreTone(score).tone] }}>
-                    {formatNumber(score, 1)}
-                  </span>{' '}
-                  <TierPill score={score} />
+                  <span>
+                    <span className="sc" style={{ color: TONE_VARS[scoreTone(score).tone] }}>
+                      {formatNumber(score, 1)}
+                    </span>{' '}
+                    <TierPill score={score} />
+                  </span>
                 </td>
                 <td data-l="Sous seuil">
-                  <BelowChips keys={r.below_threshold} />
+                  <span>
+                    <BelowChips keys={r.below_threshold} />
+                  </span>
                 </td>
                 <td data-l="Modèle" className="mono tiny">
                   {modelLabel(r)}

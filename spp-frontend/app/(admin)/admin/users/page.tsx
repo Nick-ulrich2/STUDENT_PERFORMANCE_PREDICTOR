@@ -25,7 +25,9 @@ function UserRow({ user, isSelf, confirming, busy, onAsk, onCancel, onConfirm }:
   return (
     <tr>
       <td data-l="E-mail" className="em">
-        {user.email ?? '—'} {isSelf && <span className="pill ink">Vous</span>}
+        <span>
+          {user.email ?? '—'} {isSelf && <span className="pill ink">Vous</span>}
+        </span>
       </td>
       <td data-l="Rôle">
         <span className={`role-tag${admin ? ' admin' : ''}`}>{user.role}</span>
