@@ -1,23 +1,26 @@
 import type { ActivityRecord } from '@/types/activity';
+import { startOfDay } from '@/lib/format';
+
+const DAY_MS = 86_400_000;
 
 export function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function activeDaySet(activities: ActivityRecord[]): Set<string> {
-  return new Set(
-    activities
-      .filter((a) => a.status !== 'corrected')
-      .map((a) => dateKey(new Date(a.started_at))),
-  );
+// A corrected row is superseded by its replacement, so it never counts.
+function live(activities: ActivityRecord[]): ActivityRecord[] {
+  return activities.filter((a) => a.status !== 'corrected');
 }
 
+function daySet(activities: ActivityRecord[]): Set<string> {
+  return new Set(activities.map((a) => dateKey(new Date(a.started_at))));
+}
+
+// Consecutive days ending today — or yesterday when nothing is logged yet
+// today, so a streak does not visually break before the day is over.
 function streakFromDays(days: Set<string>): number {
   const cursor = new Date();
-  if (!days.has(dateKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
+  if (!days.has(dateKey(cursor))) cursor.setDate(cursor.getDate() - 1);
   let streak = 0;
   while (days.has(dateKey(cursor))) {
     streak += 1;
@@ -26,48 +29,34 @@ function streakFromDays(days: Set<string>): number {
   return streak;
 }
 
-// Consecutive days (ending today or, if nothing is logged yet today, ending
-// yesterday so the streak doesn't visually break before the day is over)
-// with at least one non-corrected activity log. Deliberately counts any
-// tracked activity (study, tutoring, attendance), not just attendance —
-// this rewards general engagement with the tracker, the same signal
-// Duolingo-style streaks reward.
-export function computeStreak(activities: ActivityRecord[]): number {
-  return streakFromDays(activeDaySet(activities));
+export function computeStreak(
+  activities: ActivityRecord[],
+  predicate: (a: ActivityRecord) => boolean = () => true,
+): number {
+  return streakFromDays(daySet(live(activities).filter(predicate)));
 }
 
-// Same idea, scoped to a single activity type — Habitica-style per-habit
-// streaks rather than one global number, so "study session" and "attendance"
-// can each carry their own momentum.
-export function computeStreakForType(activities: ActivityRecord[], type: string): number {
-  return streakFromDays(activeDaySet(activities.filter((a) => a.activity_type === type)));
-}
+export type HeatmapDay = { key: string; date: Date; level: 0 | 1 | 2 | 3 | 4 };
 
-export function hasActivityTodayOfType(activities: ActivityRecord[], type: string): boolean {
-  const today = dateKey(new Date());
-  return activities.some(
-    (a) => a.activity_type === type && a.status !== 'corrected' && dateKey(new Date(a.started_at)) === today,
-  );
-}
-
-export type HeatmapDay = { key: string; date: Date; active: boolean };
-
-// Builds a GitHub-contributions-style grid: `weeks` columns of 7 days each,
-// oldest first, ending today. Each day is just "was anything logged" — kept
-// binary rather than intensity-graded to stay simple and calm rather than
-// gamified.
-export function buildHeatmap(activities: ActivityRecord[], weeks = 10): HeatmapDay[] {
-  const days = activeDaySet(activities);
-  const totalDays = weeks * 7;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const result: HeatmapDay[] = [];
-  for (let i = totalDays - 1; i >= 0; i -= 1) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const key = dateKey(date);
-    result.push({ key, date, active: days.has(key) });
+// 7 rows per column, oldest first, ending today. The level is the number of
+// logged activities that day, capped at 4.
+export function buildHeatmap(activities: ActivityRecord[], weeks = 18): HeatmapDay[] {
+  const counts = new Map<string, number>();
+  for (const a of live(activities)) {
+    const key = dateKey(new Date(a.started_at));
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return result;
+  const today = startOfDay(new Date());
+  const days: HeatmapDay[] = [];
+  for (let i = weeks * 7 - 1; i >= 0; i -= 1) {
+    const date = new Date(today - i * DAY_MS);
+    const n = counts.get(dateKey(date)) ?? 0;
+    days.push({ key: dateKey(date), date, level: Math.min(4, n) as HeatmapDay['level'] });
+  }
+  return days;
+}
+
+export function durationMs(a: ActivityRecord): number {
+  if (!a.ended_at) return 0;
+  return new Date(a.ended_at).getTime() - new Date(a.started_at).getTime();
 }

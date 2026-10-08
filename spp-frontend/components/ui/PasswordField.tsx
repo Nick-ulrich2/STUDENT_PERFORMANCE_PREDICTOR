@@ -1,46 +1,50 @@
 'use client';
 
-import { useState } from 'react';
-import { Eye, EyeOff, Lock } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
-type Props = {
+type PasswordFieldProps = {
   id: string;
+  label: string;
   value: string;
   onChange: (value: string) => void;
   autoComplete: 'current-password' | 'new-password';
-  minLength?: number;
-  required?: boolean;
+  error?: string;
+  extra?: ReactNode;
 };
 
-export function PasswordField({ id, value, onChange, autoComplete, minLength, required }: Props) {
+export function PasswordField({ id, label, value, onChange, autoComplete, error, extra }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
-
   return (
-    <div className="relative">
-      <Lock size={16} strokeWidth={2} className="form-field-icon" aria-hidden="true" />
-      <input
-        id={id}
-        type={visible ? 'text' : 'password'}
-        autoComplete={autoComplete}
-        minLength={minLength}
-        required={required}
-        className="form-input form-input-icon pr-11"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <button
-        type="button"
-        onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-        aria-pressed={visible}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/40 hover:text-navy"
-      >
-        {visible ? (
-          <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
-        ) : (
-          <Eye size={16} strokeWidth={2} aria-hidden="true" />
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <div className="pw">
+        <input
+          id={id}
+          className={`inp${error ? ' err' : ''}`}
+          type={visible ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          value={value}
+          aria-invalid={Boolean(error)}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-pressed={visible}
+          aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+        >
+          {visible ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
+        </button>
+      </div>
+      {extra}
+      <div className="err-msg" aria-live="polite">
+        {error && (
+          <>
+            <AlertTriangle size={14} aria-hidden="true" /> {error}
+          </>
         )}
-      </button>
+      </div>
     </div>
   );
 }

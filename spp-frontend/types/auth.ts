@@ -6,25 +6,17 @@ export interface AuthUser {
   role: UserRole;
 }
 
-export interface SessionInfo {
-  user: AuthUser;
-  accessToken: string;
-}
-
 export interface LoginCredentials {
   email: string;
   password: string;
 }
 
-export interface RegisterCredentials extends LoginCredentials {
-  fullName: string;
-  role?: UserRole;
-}
+export type AuthResult = { ok: true } | { ok: false; error: string };
 
-export interface AuthError {
-  message: string;
-  code?: string;
-}
+export type RegisterResult =
+  | { status: 'session' }
+  | { status: 'confirm' }
+  | { status: 'error'; error: string };
 
 // Admin panel: one row of the Supabase Admin API user list (GET /admin/users).
 export interface UserSummary {

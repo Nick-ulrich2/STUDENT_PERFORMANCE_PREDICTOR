@@ -1,22 +1,22 @@
 export const faqs: [string, string][] = [
   [
-    'Qu’est-ce que SPP ?',
-    'SPP est un outil d’accompagnement pédagogique qui vous aide à repérer les habitudes liées à votre apprentissage et à réfléchir à une estimation de performance basée sur vos données.',
+    'Que représente la note prédite ?',
+    'Une estimation de votre note d’examen sur 100, calculée à partir de six habitudes. C’est un repère pour agir, pas une promesse ni une note officielle.',
   ],
   [
-    'Quelles informations dois-je partager ?',
-    'Vous choisissez ce que vous suivez : habitudes d’étude simples, assiduité, sommeil et vos propres observations. Nous gardons l’expérience simple et compréhensible.',
+    'Mes données sont-elles privées ?',
+    'Oui. Chaque étudiant ne lit et n’écrit que ses propres lignes, vérifié côté base de données. Seul un administrateur voit les prédictions, jamais vos données brutes d’activité.',
   ],
   [
-    'L’estimation de performance est-elle une note ?',
-    'Non. C’est un indicateur conçu pour soutenir la réflexion — pas une note, un diagnostic, ni une garantie de performance académique future.',
+    'L’IA peut-elle modifier ma note ?',
+    'Non. La note est calculée par le modèle avant que l’IA n’intervienne. L’IA reçoit seulement le résultat pour l’expliquer.',
   ],
   [
-    'Qui peut voir mes informations ?',
-    'Vos informations d’apprentissage personnelles sont privées par conception. Vous décidez quoi enregistrer et quoi partager avec vos enseignants ou conseillers.',
+    'Pourquoi le premier chargement est-il lent ?',
+    'L’hébergement gratuit met le serveur en veille après environ 15 minutes. Le réveil prend 30 à 60 secondes ; l’application vous l’annonce clairement.',
   ],
   [
-    'Puis-je utiliser SPP si ma routine change ?',
-    'Bien sûr. L’apprentissage n’est pas linéaire. SPP est surtout utile pour repérer les changements dans le temps, sans juger une seule journée.',
+    'Est-ce vraiment gratuit ?',
+    'Oui. Le projet n’utilise que des offres gratuites : aucun paiement, aucune carte bancaire.',
   ],
 ];

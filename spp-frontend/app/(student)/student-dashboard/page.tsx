@@ -1,110 +1,207 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, CalendarCheck, History, LayoutDashboard, Users, Zap } from 'lucide-react';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { AppShell } from '@/components/layout/AppShell';
-import { SectionIntro } from '@/components/ui/SectionIntro';
-import { Button } from '@/components/ui/Button';
-import { StreakBadge } from '@/components/ui/StreakBadge';
-import { IconRingTile } from '@/components/ui/IconRingTile';
-import { ActivityHeatmap } from '@/components/ui/ActivityHeatmap';
-import { useAuth } from '@/hooks/useAuth';
-import { usePredictionHistory } from '@/hooks/usePredictionHistory';
+import { ArrowRight, Flame, Target } from 'lucide-react';
+import { Banner } from '@/components/ui/Banner';
+import { CountUp } from '@/components/ui/CountUp';
+import { FeatureTile } from '@/components/ui/FeatureTile';
+import { Heatmap } from '@/components/ui/Heatmap';
+import { Reveal } from '@/components/ui/Reveal';
+import { ScoreRing } from '@/components/ui/ScoreRing';
+import { TierPill } from '@/components/ui/Pill';
 import { useActivities } from '@/hooks/useActivities';
-import { buildHeatmap, computeStreak, hasActivityTodayOfType } from '@/lib/streak';
+import { useAuth } from '@/hooks/useAuth';
+import { useFeatures } from '@/hooks/useFeatures';
+import { usePredictionHistory } from '@/hooks/usePredictionHistory';
+import { FEATURES } from '@/lib/features';
+import { firstNameFromEmail, formatNumber, relativeDay } from '@/lib/format';
+import { newestFirst, modelLabel } from '@/lib/predictions';
+import { priorityAction } from '@/lib/priority';
+import { buildHeatmap, computeStreak } from '@/lib/streak';
 
-function StudentDashboard() {
+const WEEKS = 18;
+
+export default function StudentDashboardPage() {
   const { user, token } = useAuth();
-  const { records, loading, error } = usePredictionHistory(token);
+  const history = usePredictionHistory(token);
+  const features = useFeatures(token);
   const { activities } = useActivities(token);
 
+  const records = useMemo(() => newestFirst(history.records), [history.records]);
+  const last = records[0];
+  const previous = records[1];
+  const delta = last && previous ? Math.round((last.predicted_score - previous.predicted_score) * 10) / 10 : null;
+  const action = priorityAction(features.features);
+  const heat = useMemo(() => buildHeatmap(activities, WEEKS), [activities]);
+
+  const streaks = [
+    { label: 'Étude', days: computeStreak(activities, (a) => a.activity_type === 'study_session') },
+    { label: 'Tutorat', days: computeStreak(activities, (a) => a.activity_type === 'tutoring_session') },
+    { label: 'Présence', days: computeStreak(activities, (a) => a.activity_type === 'attendance' && a.status === 'present') },
+  ];
+
+  const name = user ? firstNameFromEmail(user.email) : '';
+  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const trackingIncomplete = features.errorStatus === 409;
+
   return (
-    <AppShell>
-      <section className="container section-pad">
-        <SectionIntro
-          icon={<LayoutDashboard size={14} strokeWidth={2.5} aria-hidden="true" />}
-          eyebrow={`Bonjour ${user?.email ?? ''}`}
-          title="Votre tableau de bord"
-          description="Lancez une prédiction ou consultez vos résultats précédents."
-          aside={<StreakBadge days={computeStreak(activities)} />}
-        />
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          <div className="card card-hover">
-            <div className="eyebrow">Prédictions</div>
-            <p className="mt-2 font-display text-4xl text-navy">{records.length}</p>
-            <p className="mt-1 text-sm text-ink/60">
-              {loading ? 'Chargement…' : error ? 'Indisponible' : 'enregistrées'}
-            </p>
-            <div className="mt-3 h-1 w-10 rounded-full bg-teal" />
+    <div className="page">
+      <div className="wrap">
+        <div className="page-h">
+          <div>
+            <span className="eyebrow">{today}</span>
+            <h1 className="display" style={{ marginTop: '.7rem' }}>
+              Bonjour, {name}.<br />
+              <span className="muted" style={{ fontWeight: 400 }}>Voici où vous en êtes.</span>
+            </h1>
           </div>
-          <div className="card card-hover">
-            <div className="eyebrow flex items-center gap-2">
-              <Zap size={14} strokeWidth={2.5} aria-hidden="true" />
-              Action rapide
-            </div>
-            <p className="mt-2 text-ink/75">Lancez une nouvelle prédiction en quelques secondes.</p>
-            <div className="mt-4"><Button href="/predict">Nouvelle prédiction</Button></div>
-            <div className="mt-3 h-1 w-10 rounded-full bg-navy" />
-          </div>
-          <div className="card card-hover">
-            <div className="eyebrow flex items-center gap-2">
-              <History size={14} strokeWidth={2.5} aria-hidden="true" />
-              Historique
-            </div>
-            <p className="mt-2 text-ink/75">Suivez l’évolution de vos scores prédits.</p>
-            <div className="mt-4">
-              <Link
-                href="/history"
-                className="inline-flex items-center gap-1 text-sm font-bold text-navy hover:underline"
-              >
-                Voir l’historique
-                <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" />
+          <Link className="btn" href="/predict">
+            Nouvelle estimation <ArrowRight className="ar" size={18} aria-hidden="true" />
+          </Link>
+        </div>
+
+        {history.error && (
+          <Banner tone="risk" title="Historique indisponible" className="err-banner-inline">
+            {history.error}
+          </Banner>
+        )}
+
+        <div className="dash">
+          <Reveal as="article" className="card c7">
+            {history.loading ? (
+              <p className="muted">Chargement de votre dernière estimation…</p>
+            ) : last ? (
+              <>
+                <div className="card-h">
+                  <div>
+                    <h3 className="display">Votre dernière estimation</h3>
+                    <p>
+                      {relativeDay(last.created_at)} · modèle {modelLabel(last)}
+                    </p>
+                  </div>
+                  <TierPill score={last.predicted_score} />
+                </div>
+                <div className="bigscore">
+                  <ScoreRing score={last.predicted_score} size={200} decimals={1} />
+                  <div className="stack" style={{ ['--s' as string]: '.7rem' }}>
+                    {delta !== null && (
+                      <div>
+                        <span className={`delta ${delta >= 0 ? 'up' : 'down'}`}>
+                          {delta >= 0 ? '▲ +' : '▼ −'}
+                          {formatNumber(Math.abs(delta), 1)} pt
+                        </span>{' '}
+                        <span className="muted tiny">depuis la précédente</span>
+                      </div>
+                    )}
+                    <p className="muted">
+                      Marge d’erreur typique de <b style={{ color: 'var(--ink)' }}>± 2 points</b>. Une estimation se lit comme un repère, pas comme un résultat garanti.
+                    </p>
+                    <Link className="link" href="/history">
+                      Voir l’historique
+                    </Link>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="empty" style={{ padding: '2rem 0' }}>
+                <h3 className="display">Aucune estimation pour l’instant</h3>
+                <p className="muted" style={{ maxWidth: '26rem' }}>
+                  Faites votre première estimation : elle servira de point de départ à toute votre progression.
+                </p>
+                <Link className="btn" href="/predict">
+                  Estimer ma note <ArrowRight className="ar" size={18} aria-hidden="true" />
+                </Link>
+              </div>
+            )}
+          </Reveal>
+
+          <Reveal as="article" className="card priority c5" delay={0.08}>
+            <span className="pill tag">
+              <Target size={14} aria-hidden="true" /> Action prioritaire
+            </span>
+            <h3 className="display">{action.title}</h3>
+            <p>{action.text}</p>
+            <Link className="btn mark" style={{ marginTop: '1.2rem', position: 'relative', zIndex: 1 }} href={action.href}>
+              {action.cta} <ArrowRight className="ar" size={18} aria-hidden="true" />
+            </Link>
+          </Reveal>
+
+          <Reveal as="article" className="card c8">
+            <div className="card-h">
+              <div>
+                <h3 className="display">Cette semaine</h3>
+                <p>Vos 6 variables, agrégées sur 7 jours glissants. Le repère rouge marque le seuil recommandé.</p>
+              </div>
+              <Link className="link tiny" href="/tracking">
+                Détail
               </Link>
             </div>
-            <div className="mt-3 h-1 w-10 rounded-full bg-amber" />
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="card md:col-span-1">
-            <div className="eyebrow">Aujourd’hui</div>
-            <h3 className="mt-1 font-display text-xl text-navy">Vue d’ensemble</h3>
-            <div className="mt-6 flex justify-around">
-              <IconRingTile
-                icon={BookOpen}
-                label="Étude"
-                done={hasActivityTodayOfType(activities, 'study_session')}
-              />
-              <IconRingTile
-                icon={Users}
-                label="Tutorat"
-                done={hasActivityTodayOfType(activities, 'tutoring_session')}
-              />
-              <IconRingTile
-                icon={CalendarCheck}
-                label="Assiduité"
-                done={hasActivityTodayOfType(activities, 'attendance')}
-              />
+            {trackingIncomplete && (
+              <Banner
+                tone="warn"
+                title="Suivi incomplet"
+                className="err-banner-inline"
+                action={
+                  <Link className="btn sm ghost" href="/tracking">
+                    Compléter
+                  </Link>
+                }
+              >
+                Marquez votre présence au moins un jour et complétez votre profil.
+              </Banner>
+            )}
+            {features.error && !trackingIncomplete && (
+              <Banner tone="risk" title="Suivi indisponible" className="err-banner-inline">
+                {features.error}
+              </Banner>
+            )}
+            <div className="tiles">
+              {FEATURES.map((f) => (
+                <FeatureTile key={f.key} featureKey={f.key} value={features.features?.[f.key] ?? null} />
+              ))}
             </div>
-          </div>
-          <div className="card md:col-span-2">
-            <div className="eyebrow">Régularité</div>
-            <h3 className="mt-1 font-display text-xl text-navy">10 dernières semaines</h3>
-            <div className="mt-6">
-              <ActivityHeatmap days={buildHeatmap(activities, 10)} />
-            </div>
-          </div>
-        </div>
-      </section>
-    </AppShell>
-  );
-}
+          </Reveal>
 
-export default function DashboardPage() {
-  return (
-    <ProtectedRoute role="student" redirectTo="/login">
-      <StudentDashboard />
-    </ProtectedRoute>
+          <Reveal as="article" className="card c4" delay={0.08}>
+            <div className="card-h">
+              <div>
+                <h3 className="display">Séries</h3>
+                <p>Jours consécutifs par activité.</p>
+              </div>
+            </div>
+            <div className="streaks">
+              {streaks.map((s) => (
+                <div key={s.label} className={`streak${s.days ? '' : ' zero'}`}>
+                  <div className="flame">
+                    <Flame size={22} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <div className="n">
+                      <CountUp value={s.days} duration={800} />{' '}
+                      <span style={{ fontSize: '.9rem', fontFamily: 'var(--f-body)', fontWeight: 500 }}>jour{s.days > 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="t">
+                      {s.label}
+                      {s.days ? '' : ' · reprenez aujourd’hui'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          <Reveal as="article" className="card c12">
+            <div className="card-h">
+              <div>
+                <h3 className="display">Carte de chaleur</h3>
+                <p>Vos {WEEKS * 7} derniers jours d’activité. Plus la case est foncée, plus la journée a été active.</p>
+              </div>
+            </div>
+            <Heatmap days={heat} weeks={WEEKS} label={`Carte de chaleur d’activité sur ${WEEKS} semaines`} />
+          </Reveal>
+        </div>
+      </div>
+    </div>
   );
 }

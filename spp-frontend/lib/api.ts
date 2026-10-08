@@ -1,9 +1,11 @@
 import type { ApiError, ApiResponse, RequestOptions } from '@/types/api';
+import { trackRequest } from '@/lib/pending';
 import type {
   PredictionOutput,
   PredictionRecord,
   RecommendationOutput,
   RecommendationRequest,
+  StudentInput,
 } from '@/types/prediction';
 import type { UserRole, UserSummary } from '@/types/auth';
 import type {
@@ -32,6 +34,7 @@ async function request<T>(
     headers.set('Authorization', `Bearer ${init.token}`);
   }
 
+  const endTracking = trackRequest();
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
@@ -45,8 +48,10 @@ async function request<T>(
     const payload = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
+      const rawDetail = isJson ? (payload as { detail?: unknown }).detail : undefined;
       const message =
-        (isJson && (payload as { detail?: string }).detail) ||
+        (typeof rawDetail === 'string' && rawDetail) ||
+        (Array.isArray(rawDetail) && rawDetail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(' ')) ||
         (typeof payload === 'string' && payload) ||
         `Request failed with status ${response.status}`;
       return { ok: false, error: { detail: message, status: response.status } };
@@ -57,10 +62,19 @@ async function request<T>(
     const detail =
       err instanceof Error ? err.message : 'Network error. Please try again.';
     return { ok: false, error: { detail, status: 0 } satisfies ApiError };
+  } finally {
+    endTracking();
   }
 }
 
 export const api = {
+  predict(input: StudentInput, opts: RequestOptions): Promise<ApiResponse<PredictionOutput>> {
+    return request<PredictionOutput>('/predict', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      ...opts,
+    });
+  },
   getMyPredictions(opts: RequestOptions): Promise<ApiResponse<PredictionRecord[]>> {
     return request<PredictionRecord[]>('/predictions/me', { method: 'GET', ...opts });
   },

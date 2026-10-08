@@ -1,73 +1,80 @@
 'use client';
 
-import { Download, ListChecks } from 'lucide-react';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { AppShell } from '@/components/layout/AppShell';
-import { SectionIntro } from '@/components/ui/SectionIntro';
-import { Button } from '@/components/ui/Button';
-import { PredictionTable } from '@/components/predictions/PredictionTable';
+import { useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
+import { ExportButton } from '@/components/admin/ExportButton';
+import { PredictionsTable } from '@/components/admin/PredictionsTable';
+import { useEmailLookup } from '@/components/admin/useEmailLookup';
+import { Banner } from '@/components/ui/Banner';
+import { Highlight } from '@/components/ui/Reveal';
+import { useAdminPredictions, useAdminUsers } from '@/hooks/useAdmin';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdminPredictions } from '@/hooks/useAdmin';
-import { downloadCsv } from '@/lib/csv';
-
-function AdminPredictions() {
-  const { token } = useAuth();
-  const { records, loading, error, refresh } = useAdminPredictions(token);
-
-  const handleExport = () => {
-    downloadCsv(
-      `predictions-${new Date().toISOString().slice(0, 10)}.csv`,
-      records.map((r) => ({
-        id: r.id,
-        user_id: r.user_id,
-        date: r.created_at,
-        score_predit: r.predicted_score,
-        assiduite: r.attendance,
-        heures_etude: r.hours_studied,
-        score_precedent: r.previous_scores,
-        seances_tutorat: r.tutoring_sessions,
-        acces_ressources: r.access_to_resources,
-        implication_parentale: r.parental_involvement,
-      })),
-    );
-  };
-
-  return (
-    <AppShell>
-      <section className="container section-pad">
-        <SectionIntro
-          icon={<ListChecks size={14} strokeWidth={2.5} aria-hidden="true" />}
-          eyebrow="Supervision"
-          title="Toutes les prédictions"
-          description="Liste complète des prédictions effectuées via l’API."
-          aside={
-            records.length > 0 && (
-              <Button secondary onClick={handleExport}>
-                <Download size={14} strokeWidth={2.5} className="mr-2" aria-hidden="true" />
-                Exporter CSV
-              </Button>
-            )
-          }
-        />
-        <div className="mt-10">
-          <PredictionTable
-            records={records}
-            loading={loading}
-            error={error}
-            emptyMessage="Aucune prédiction à superviser pour le moment."
-            showUser
-            onRefresh={refresh}
-          />
-        </div>
-      </section>
-    </AppShell>
-  );
-}
+import { newestFirst } from '@/lib/predictions';
 
 export default function AdminPredictionsPage() {
+  const { token } = useAuth();
+  const predictions = useAdminPredictions(token);
+  const users = useAdminUsers(token);
+  const emailOf = useEmailLookup(users.users);
+  const [query, setQuery] = useState('');
+
+  const all = useMemo(() => newestFirst(predictions.records), [predictions.records]);
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? all.filter((r) => emailOf(r.user_id).toLowerCase().includes(q)) : all;
+  }, [all, query, emailOf]);
+
+  const loading = predictions.loading || users.loading;
+  const error = predictions.error ?? users.error;
+
   return (
-    <ProtectedRoute role="admin" redirectTo="/login">
-      <AdminPredictions />
-    </ProtectedRoute>
+    <div className="page">
+      <div className="wrap">
+        <div className="page-h">
+          <div>
+            <span className="eyebrow">Prédictions</span>
+            <h1 className="display" style={{ marginTop: '.7rem' }}>
+              Toutes les <Highlight>prédictions</Highlight>.
+            </h1>
+          </div>
+          <ExportButton records={shown} emailOf={emailOf} />
+        </div>
+
+        {error && (
+          <Banner tone="risk" title="Données indisponibles" className="err-banner-inline">
+            {error}
+          </Banner>
+        )}
+
+        <article className="card">
+          <div className="row" style={{ marginBottom: '1rem', justifyContent: 'space-between' }}>
+            <div className="search">
+              <span aria-hidden="true">
+                <Search size={18} />
+              </span>
+              <input
+                className="inp"
+                type="search"
+                placeholder="Filtrer par e-mail"
+                aria-label="Filtrer par e-mail"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <span className="tiny muted">
+              {query ? `${shown.length} prédictions affichées` : `${all.length} prédictions · du plus récent au plus ancien`}
+            </span>
+          </div>
+          {loading ? (
+            <p className="muted">Chargement…</p>
+          ) : (
+            <PredictionsTable records={shown} emailOf={emailOf} emptyText="Aucune prédiction pour cet e-mail." />
+          )}
+          <p className="tiny muted" style={{ marginTop: '1rem' }}>
+            Pagination prévue en version 1.1 : cette vue charge pour l’instant toutes les lignes.
+          </p>
+        </article>
+      </div>
+    </div>
   );
 }

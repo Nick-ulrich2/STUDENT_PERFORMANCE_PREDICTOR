@@ -1,51 +1,50 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, ElementType, ReactNode } from 'react';
+import { useInView } from '@/hooks/useInView';
 
-interface RevealProps {
-  children: React.ReactNode;
+type InViewProps = {
+  children: ReactNode;
+  as?: ElementType;
   className?: string;
-  delay?: number;
+  style?: CSSProperties;
+  threshold?: number;
+  [attribute: string]: unknown;
+};
+
+// Adds the `in` class once the element has entered the viewport, for CSS-driven
+// entrance effects (highlighter sweep, reveal).
+export function InView({ children, as: Tag = 'div', className = '', style, threshold = 0.2, ...rest }: InViewProps) {
+  const [ref, inView] = useInView<HTMLElement>(threshold);
+  return (
+    <Tag ref={ref} className={`${className}${inView ? ' in' : ''}`.trim()} style={style} {...rest}>
+      {children}
+    </Tag>
+  );
 }
 
-export function Reveal({
-  children,
-  className = '',
-  delay = 0,
-}: RevealProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+type RevealProps = {
+  children: ReactNode;
+  as?: ElementType;
+  className?: string;
+  style?: CSSProperties;
+  delay?: number;
+  [attribute: string]: unknown;
+};
 
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -40px' },
-    );
-
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
+export function Reveal({ delay = 0, className = '', style, children, ...rest }: RevealProps) {
   return (
-    <div
-      ref={ref}
-      style={{ ['--reveal-delay' as string]: `${delay}ms` } as React.CSSProperties}
-      className={`reveal ${visible ? 'reveal-visible' : 'reveal-hidden'} ${className}`}
-    >
+    <InView {...rest} className={`rv ${className}`.trim()} style={{ '--d': `${delay}s`, ...style } as CSSProperties}>
       {children}
-    </div>
+    </InView>
+  );
+}
+
+// The yellow highlighter sweep behind a key phrase, played when it scrolls into view.
+export function Highlight({ children }: { children: ReactNode }) {
+  return (
+    <InView as="span" className="hl" threshold={0.6}>
+      {children}
+    </InView>
   );
 }

@@ -1,12 +1,13 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type {
+  AuthResult,
   AuthUser,
   LoginCredentials,
-  RegisterCredentials,
-  SessionInfo,
+  RegisterResult,
   UserRole,
 } from '@/types/auth';
 
@@ -14,121 +15,77 @@ type AuthState = {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  error: string | null;
 };
 
-const initialState: AuthState = {
-  user: null,
-  token: null,
-  loading: true,
-  error: null,
-};
-
-function readRoleFromMetadata(metadata: unknown): 'student' | 'admin' {
+// The role is read from app_metadata, which only the service role can write
+// (never user_metadata, which the user controls). This is for routing and
+// display only: the API re-checks the signed token on every request.
+function roleOf(metadata: unknown): UserRole {
   if (metadata && typeof metadata === 'object' && 'role' in metadata) {
-    const role = (metadata as { role?: string }).role;
-    if (role === 'admin' || role === 'student') return role;
+    return (metadata as { role?: string }).role === 'admin' ? 'admin' : 'student';
   }
   return 'student';
 }
 
-async function fetchUserRoleFromBackend(accessToken: string): Promise<UserRole> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/+$/, '');
-
-  try {
-    const response = await fetch(`${baseUrl}/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: 'no-store',
-    });
-    if (!response.ok) {
-      return 'student';
-    }
-    const payload = await response.json().catch(() => ({ role: 'student' }));
-    return payload.role === 'admin' ? 'admin' : 'student';
-  } catch {
-    return 'student';
-  }
-}
-
-function buildSession(
-  sbUser: { id: string; email?: string | null; user_metadata?: unknown },
-  token: string,
-  roleOverride?: UserRole,
-): SessionInfo {
-  const role = roleOverride ?? readRoleFromMetadata(sbUser.user_metadata);
+function stateFromSession(session: Session | null): AuthState {
+  if (!session) return { user: null, token: null, loading: false };
   return {
     user: {
-      id: sbUser.id,
-      email: sbUser.email ?? '',
-      role,
+      id: session.user.id,
+      email: session.user.email ?? '',
+      role: roleOf(session.user.app_metadata),
     },
-    accessToken: token,
+    token: session.access_token,
+    loading: false,
   };
 }
 
 type AuthContextValue = AuthState & {
-  login: (credentials: LoginCredentials) => Promise<boolean>;
-  register: (credentials: RegisterCredentials) => Promise<boolean>;
-  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  configured: boolean;
+  login: (credentials: LoginCredentials) => Promise<AuthResult>;
+  register: (credentials: LoginCredentials) => Promise<RegisterResult>;
+  logout: () => Promise<void>;
+  isLoggingOut: () => boolean;
+  requestPasswordReset: (email: string) => Promise<AuthResult>;
+  updatePassword: (password: string) => Promise<AuthResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// A single shared session lookup for the whole app. Previously this was a
-// bare hook (no Context) called independently by Navbar, ProtectedRoute,
-// every page and ResultsDisplay — each instance ran its own async
-// getSession() and could resolve at a slightly different time. On a hard
-// reload landing directly on a protected route, that let a page's own data
-// hooks (useActivities, useFeatures, ...) fire with token=null a moment
-// before this instance's session restore finished, briefly showing
-// "Authentification requise" even though the user was, in fact, signed in.
-// One provider, one resolution, no race.
+const INVALID_CREDENTIALS = 'E-mail ou mot de passe incorrect.';
+const NOT_CONFIGURED = 'Supabase non configuré.';
+
+function frenchAuthError(message: string | undefined, fallback: string): string {
+  if (!message) return fallback;
+  if (/invalid login credentials/i.test(message)) return INVALID_CREDENTIALS;
+  if (/already registered|already exists/i.test(message)) return 'Un compte existe déjà avec cet e-mail.';
+  if (/email not confirmed/i.test(message)) return 'Confirmez votre e-mail avant de vous connecter.';
+  if (/rate limit/i.test(message)) return 'Trop de tentatives. Réessayez dans quelques minutes.';
+  return message;
+}
+
+// One provider, one session resolution for the whole app: with a bare hook each
+// call site restored the session on its own and a page could fire its data
+// requests with token=null before the restore finished.
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>(initialState);
+  const [state, setState] = useState<AuthState>({ user: null, token: null, loading: true });
+  const loggingOut = useRef(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
-      setState({ ...initialState, loading: false, error: 'Supabase non configuré.' });
-      return;
+      const id = requestAnimationFrame(() => setState({ user: null, token: null, loading: false }));
+      return () => cancelAnimationFrame(id);
     }
-
-    const client = supabase!;
+    const client = supabase;
     let mounted = true;
 
-    async function load() {
-      const { data, error } = await client.auth.getSession();
-      if (!mounted) return;
-      if (error || !data.session) {
-        setState({ ...initialState, loading: false });
-        return;
-      }
-      const role = await fetchUserRoleFromBackend(data.session.access_token);
-      const session = buildSession(data.session.user, data.session.access_token, role);
-      setState({
-        user: session.user,
-        token: session.accessToken,
-        loading: false,
-        error: null,
-      });
-    }
+    client.auth.getSession().then(({ data }) => {
+      if (mounted) setState(stateFromSession(data.session));
+    });
 
-    load();
-
-    const { data: sub } = client.auth.onAuthStateChange(async (_event, newSession) => {
-      if (!mounted) return;
-      if (!newSession) {
-        setState({ ...initialState, loading: false });
-        return;
-      }
-      const role = await fetchUserRoleFromBackend(newSession.access_token);
-      const session = buildSession(newSession.user, newSession.access_token, role);
-      setState({
-        user: session.user,
-        token: session.accessToken,
-        loading: false,
-        error: null,
-      });
+    const { data: sub } = client.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setState(stateFromSession(session));
     });
 
     return () => {
@@ -137,104 +94,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async ({ email, password }: LoginCredentials) => {
-    if (!isSupabaseConfigured || !supabase) {
-      setState((s) => ({ ...s, loading: false, error: 'Supabase non configuré.' }));
-      return false;
-    }
-
-    const client = supabase!;
-    setState((s) => ({ ...s, loading: true, error: null }));
-    const { data, error } = await client.auth.signInWithPassword({ email, password });
+  const login = useCallback(async ({ email, password }: LoginCredentials): Promise<AuthResult> => {
+    if (!supabase) return { ok: false, error: NOT_CONFIGURED };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.session) {
-      setState((s) => ({
-        ...s,
-        loading: false,
-        error: error?.message ?? 'Connexion impossible.',
-      }));
-      return false;
+      return { ok: false, error: frenchAuthError(error?.message, 'Connexion impossible.') };
     }
-
-    const role = await fetchUserRoleFromBackend(data.session.access_token);
-    setState({
-      user: {
-        id: data.session.user.id,
-        email: data.session.user.email ?? '',
-        role,
-      },
-      token: data.session.access_token,
-      loading: false,
-      error: null,
-    });
-    return true;
+    setState(stateFromSession(data.session));
+    return { ok: true };
   }, []);
 
-  const register = useCallback(
-    async ({ email, password, fullName, role = 'student' }: RegisterCredentials) => {
-      if (!isSupabaseConfigured || !supabase) {
-        setState((s) => ({ ...s, loading: false, error: 'Supabase non configuré.' }));
-        return false;
-      }
+  const register = useCallback(async ({ email, password }: LoginCredentials): Promise<RegisterResult> => {
+    if (!supabase) return { status: 'error', error: NOT_CONFIGURED };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      return { status: 'error', error: frenchAuthError(error.message, 'Inscription impossible.') };
+    }
+    if (!data.session) return { status: 'confirm' };
+    setState(stateFromSession(data.session));
+    return { status: 'session' };
+  }, []);
 
-      const client = supabase!;
-      setState((s) => ({ ...s, loading: true, error: null }));
-      const { data, error } = await client.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName, role },
-        },
-      });
-      if (error || !data.session) {
-        setState((s) => ({
-          ...s,
-          loading: false,
-          error: error?.message ?? "Inscription impossible.",
-        }));
-        return false;
-      }
+  const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
+    if (!supabase) return { ok: false, error: NOT_CONFIGURED };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error && /rate limit/i.test(error.message)) {
+      return { ok: false, error: frenchAuthError(error.message, 'Envoi impossible.') };
+    }
+    // Same answer whether or not the address has an account: no user enumeration.
+    return { ok: true };
+  }, []);
 
-      const backendRole = await fetchUserRoleFromBackend(data.session.access_token);
-      setState({
-        user: {
-          id: data.session.user.id,
-          email: data.session.user.email ?? '',
-          role: backendRole,
-        },
-        token: data.session.access_token,
-        loading: false,
-        error: null,
-      });
-      return true;
-    },
-    [],
-  );
+  const updatePassword = useCallback(async (password: string): Promise<AuthResult> => {
+    if (!supabase) return { ok: false, error: NOT_CONFIGURED };
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { ok: false, error: frenchAuthError(error.message, 'Mise à jour impossible.') };
+    return { ok: true };
+  }, []);
+
+  // Lets route guards tell a deliberate sign-out (go home) from an expired or
+  // missing session (go to the login page and come back after).
+  const isLoggingOut = useCallback(() => loggingOut.current, []);
 
   const logout = useCallback(async () => {
-    if (!isSupabaseConfigured || !supabase) {
-      setState({ ...initialState, loading: false });
-      return;
-    }
-    const client = supabase!;
-    await client.auth.signOut();
-    setState({ ...initialState, loading: false });
+    loggingOut.current = true;
+    setTimeout(() => (loggingOut.current = false), 3000);
+    if (supabase) await supabase.auth.signOut();
+    setState({ user: null, token: null, loading: false });
   }, []);
 
-  const value: AuthContextValue = {
-    ...state,
-    login,
-    register,
-    logout,
-    isAuthenticated: Boolean(state.user && state.token),
-  };
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      ...state,
+      isAuthenticated: Boolean(state.user && state.token),
+      configured: isSupabaseConfigured,
+      login,
+      register,
+      logout,
+      isLoggingOut,
+      requestPasswordReset,
+      updatePassword,
+    }),
+    [state, login, register, logout, isLoggingOut, requestPasswordReset, updatePassword],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error('useAuth() must be used within <AuthProvider>.');
-  }
+  if (!ctx) throw new Error('useAuth() must be used within <AuthProvider>.');
   return ctx;
 }

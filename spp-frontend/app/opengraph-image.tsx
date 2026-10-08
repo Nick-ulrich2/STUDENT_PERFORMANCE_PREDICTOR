@@ -1,5 +1,4 @@
 import { ImageResponse } from 'next/og';
-import { SITE_DESCRIPTION } from '@/lib/seo';
 
 export const alt = 'SPP — Student Performance Predictor';
 export const size = { width: 1200, height: 630 };
@@ -13,62 +12,70 @@ export default async function OpengraphImage() {
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
+          backgroundColor: '#1B1A17',
+          padding: 72,
           justifyContent: 'space-between',
-          padding: 80,
-          backgroundColor: '#f8f8f3',
-          backgroundImage:
-            'radial-gradient(circle at 85% 15%, rgba(215,238,228,0.9) 0%, rgba(215,238,228,0) 55%), radial-gradient(circle at 10% 90%, rgba(223,240,244,0.9) 0%, rgba(223,240,244,0) 55%)',
+          alignItems: 'center',
+          fontFamily: 'serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 620 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, color: '#F5EFE3', fontSize: 30, fontWeight: 700 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                backgroundColor: '#FFD84D',
+                color: '#1B1A17',
+                fontSize: 30,
+              }}
+            >
+              S
+            </div>
+            SPP
+          </div>
+          <div style={{ display: 'flex', fontSize: 76, fontWeight: 700, color: '#F5EFE3', lineHeight: 1.04 }}>
+            Votre note de demain se prépare aujourd’hui.
+          </div>
+          <div style={{ display: 'flex', fontSize: 26, color: '#cfc7b3' }}>Estimation, jamais verdict.</div>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 400,
+            height: 400,
+            backgroundColor: '#FFFDF7',
+            borderRadius: 12,
+            transform: 'rotate(3deg)',
+            border: '2px solid #CFC3A8',
+          }}
+        >
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 64,
-              height: 64,
-              borderRadius: 16,
-              backgroundColor: '#123d59',
-              color: 'white',
-              fontSize: 32,
+              width: 270,
+              height: 190,
+              border: '9px solid #2457A6',
+              borderRadius: 140,
+              color: '#1B1A17',
+              fontSize: 104,
               fontWeight: 800,
             }}
           >
-            S
+            66,0
           </div>
-          <div style={{ display: 'flex', fontSize: 34, fontWeight: 800, color: '#12212b' }}>
-            SPP<span style={{ color: '#2d7770' }}>.</span>
+          <div style={{ display: 'flex', marginTop: 28, fontSize: 28, color: '#2457A6', fontWeight: 700, letterSpacing: 4 }}>
+            BON
           </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 980 }}>
-          <div style={{ display: 'flex', fontSize: 64, fontWeight: 700, color: '#123d59', lineHeight: 1.1 }}>
-            Comprenez vos habitudes d’apprentissage.
-          </div>
-          <div style={{ display: 'flex', fontSize: 28, color: 'rgba(18,33,43,0.65)', lineHeight: 1.4 }}>
-            {SITE_DESCRIPTION.slice(0, 140)}…
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 12 }}>
-          {['Suivi d’habitudes', 'Prédiction ML', 'Recommandations IA'].map((label) => (
-            <div
-              key={label}
-              style={{
-                display: 'flex',
-                padding: '10px 20px',
-                borderRadius: 999,
-                backgroundColor: 'rgba(45,119,112,0.12)',
-                color: '#2d7770',
-                fontSize: 22,
-                fontWeight: 700,
-              }}
-            >
-              {label}
-            </div>
-          ))}
         </div>
       </div>
     ),

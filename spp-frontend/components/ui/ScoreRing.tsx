@@ -1,75 +1,50 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { TONE_COLORS, type ScoreTone } from '@/lib/scoreTone';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { useInView } from '@/hooks/useInView';
+import { EASE, tween } from '@/lib/motion';
+import { formatNumber } from '@/lib/format';
+import { scoreTone } from '@/lib/scoreTone';
 
-type Props = {
-  score: number;
-  label: string;
-  tone: ScoreTone;
-  size?: number;
-};
-
-const RADIUS = 52;
+const RADIUS = 80;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-export function ScoreRing({ score, label, tone, size = 168 }: Props) {
-  // Animate from 0 on mount instead of snapping straight to the final value —
-  // the fill sweeping in is the one piece of motion that makes the number feel
-  // computed rather than just printed.
-  const [display, setDisplay] = useState(0);
+type ScoreRingProps = { score: number; size?: number; decimals?: number; label?: string };
+
+export function ScoreRing({ score, size = 180, decimals = 0, label = '/ 100' }: ScoreRingProps) {
+  const [ref, inView] = useInView<HTMLDivElement>(0.25);
+  const [progress, setProgress] = useState(0);
+  const tone = scoreTone(score);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setDisplay(score));
-    return () => cancelAnimationFrame(frame);
-  }, [score]);
-
-  const clamped = Math.max(0, Math.min(100, display));
-  const offset = CIRCUMFERENCE * (1 - clamped / 100);
-  const color = TONE_COLORS[tone].text;
+    if (!inView) return;
+    const t = tween(1400, setProgress, { ease: EASE.inOut });
+    return () => t.cancel();
+  }, [inView, score]);
 
   return (
     <div
+      ref={ref}
+      className={`ring ${tone.className}`}
+      style={{ '--sz': `${size}px` } as CSSProperties}
       role="img"
-      aria-label={`Score prédit : ${score.toFixed(1)} sur 100, ${label}`}
-      className="relative inline-flex items-center justify-center"
-      style={{ width: size, height: size }}
+      aria-label={`Score ${formatNumber(score, decimals)} sur 100, niveau ${tone.label}`}
     >
-      <div
-        className="absolute inset-0 -z-10 rounded-full blur-2xl"
-        style={{ background: `radial-gradient(circle, ${color}26 0%, transparent 70%)` }}
-        aria-hidden="true"
-      />
-      <svg viewBox="0 0 120 120" width={size} height={size} className="-rotate-90">
+      <svg viewBox="0 0 180 180">
+        <circle className="tr" cx="90" cy="90" r={RADIUS} strokeWidth="14" />
         <circle
-          cx="60"
-          cy="60"
+          className="pg"
+          cx="90"
+          cy="90"
           r={RADIUS}
-          fill="none"
-          stroke="var(--line)"
-          strokeWidth="10"
-        />
-        <circle
-          cx="60"
-          cy="60"
-          r={RADIUS}
-          fill="none"
-          stroke={color}
-          strokeWidth="10"
-          strokeLinecap="round"
+          strokeWidth="14"
           strokeDasharray={CIRCUMFERENCE}
-          strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(.34,1.4,.64,1)' }}
+          strokeDashoffset={CIRCUMFERENCE * (1 - (score / 100) * progress)}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="font-display text-4xl text-navy">
-          {score.toFixed(1)}
-          <span className="text-base text-ink/40">/100</span>
-        </p>
-        <p className="mt-1 text-xs font-bold uppercase tracking-wide" style={{ color }}>
-          {label}
-        </p>
+      <div className="c">
+        <b className="n">{formatNumber(score * progress, decimals)}</b>
+        <small>{label}</small>
       </div>
     </div>
   );

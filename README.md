@@ -1,4 +1,13 @@
-# Student Performance Predictor — Backend
+# Student Performance Predictor
+
+## Démo en ligne
+
+- Frontend : https://student-performance-predictor-vert.vercel.app
+- Backend (API + doc Swagger) : https://student-performance-predictor-057j.onrender.com/docs
+
+Backend hébergé sur le tier gratuit Render : le service s'endort après ~15 min
+d'inactivité et met 30-60s à redémarrer à la prochaine requête. Ouvrir l'URL
+backend quelques minutes avant une démo pour le "réveiller".
 
 ## Installation
 python -m venv venv
@@ -25,6 +34,13 @@ Fichiers attendus :
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`
+- `NEXT_PUBLIC_SITE_URL` (URL publique du frontend : canonical, Open Graph, sitemap ; obligatoire en production)
+
+## Mot de passe oublié
+
+Le lien reçu par e-mail ouvre `/reset-password`. Cette URL doit être autorisée dans Supabase :
+*Authentication → URL Configuration → Redirect URLs* (ajouter `<NEXT_PUBLIC_SITE_URL>/reset-password`,
+et `http://127.0.0.1:3001/reset-password` en local).
 
 ## Lancer le projet localement
 Le frontend est démarré sur le port canonique 127.0.0.1:3001 et le backend sur 127.0.0.1:8000.

@@ -1,27 +1,47 @@
-import type { Metadata } from 'next';
-import { Manrope, DM_Serif_Display } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { Caveat, Fraunces, Instrument_Sans, JetBrains_Mono } from 'next/font/google';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
 import { AuthProvider } from '@/hooks/useAuth';
+import { ToastProvider } from '@/components/ui/Toast';
+import { ColdStartOverlay } from '@/components/system/ColdStartOverlay';
 import './globals.css';
 
-const manrope = Manrope({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-manrope',
+  axes: ['SOFT', 'opsz'],
+  variable: '--font-fraunces',
   display: 'swap',
 });
 
-const dmSerif = DM_Serif_Display({
+const instrument = Instrument_Sans({
   subsets: ['latin'],
-  weight: '400',
-  variable: '--font-dm-serif',
+  variable: '--font-instrument',
   display: 'swap',
 });
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-jetbrains',
+  display: 'swap',
+});
+
+const caveat = Caveat({
+  subsets: ['latin'],
+  weight: ['700'],
+  variable: '--font-caveat',
+  display: 'swap',
+});
+
+export const viewport: Viewport = {
+  themeColor: '#F5EFE3',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_NAME,
-    template: '%s — SPP',
+    template: '%s · SPP',
   },
   description: SITE_DESCRIPTION,
   keywords: [
@@ -31,9 +51,9 @@ export const metadata: Metadata = {
     'tracker académique',
     'assiduité étudiant',
     'student performance predictor',
-    'analytics apprentissage',
+    'estimation note examen',
   ],
-  authors: [{ name: 'SPP' }],
+  authors: [{ name: 'Ulrich Mvongo' }],
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
@@ -55,15 +75,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
-      <body className={`${manrope.variable} ${dmSerif.variable}`}>
-        <AuthProvider>{children}</AuthProvider>
+    <html lang="fr" className={`${fraunces.variable} ${instrument.variable} ${jetbrains.variable} ${caveat.variable}`}>
+      <body>
+        <noscript>
+          <style>{'.rv{opacity:1!important;transform:none!important}.hl{background-size:100% 100%!important}.heat i{opacity:1!important}'}</style>
+        </noscript>
+        <a className="skip" href="#main">
+          Aller au contenu
+        </a>
+        <AuthProvider>
+          <ToastProvider>
+            <div className="app">{children}</div>
+            <ColdStartOverlay />
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

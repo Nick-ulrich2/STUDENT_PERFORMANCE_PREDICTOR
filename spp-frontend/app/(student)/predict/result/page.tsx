@@ -1,53 +1,92 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileSearch, Sparkles } from 'lucide-react';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { AppShell } from '@/components/layout/AppShell';
-import { SectionIntro } from '@/components/ui/SectionIntro';
-import { ResultsDisplay } from '@/components/predictions/ResultsDisplay';
-import type { PredictionOutput } from '@/types/prediction';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+import { Importance } from '@/components/result/Importance';
+import { RecoCard } from '@/components/result/RecoCard';
+import { SaveStatus, type SaveState } from '@/components/result/SaveStatus';
+import { ScoreSheet } from '@/components/result/ScoreSheet';
+import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api';
+import { loadLastPrediction } from '@/lib/lastPrediction';
 
-function ResultInner() {
-  const [result, setResult] = useState<PredictionOutput | null>(null);
+const SAVED_WINDOW_MS = 10 * 60_000;
 
+function ResultView() {
+  const { token } = useAuth();
+  const [last] = useState(loadLastPrediction);
+  const [save, setSave] = useState<{ state: SaveState; count: number | null }>({ state: 'checking', count: null });
+
+  // The API returns the score whether or not the database accepted the write,
+  // so "saved" is verified against the history rather than assumed.
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('spp:lastPrediction');
-      if (raw) setResult(JSON.parse(raw) as PredictionOutput);
-    } catch {
-      setResult(null);
-    }
-  }, []);
+    if (!last || !token) return;
+    const controller = new AbortController();
+    api.getMyPredictions({ token, signal: controller.signal }).then((response) => {
+      if (controller.signal.aborted) return;
+      if (!response.ok) return setSave({ state: 'missing', count: null });
+      const found = response.data.some(
+        (r) =>
+          Math.abs(Number(r.predicted_score) - last.output.predicted_score) < 0.01 &&
+          Math.abs(new Date(r.created_at).getTime() - last.at) < SAVED_WINDOW_MS,
+      );
+      setSave({ state: found ? 'saved' : 'missing', count: found ? response.data.length : null });
+    });
+    return () => controller.abort();
+  }, [last, token]);
 
-  return (
-    <AppShell>
-      <section className="container section-pad">
-        <SectionIntro
-          icon={<Sparkles size={14} strokeWidth={2.5} aria-hidden="true" />}
-          eyebrow="Résultat"
-          title="Votre prédiction"
-          description="Voici le score prédit et les leviers qui ont le plus compté."
-        />
-        <div className="mt-10">
-          {result ? (
-            <ResultsDisplay result={result} />
-          ) : (
-            <div className="card flex flex-col items-center gap-2 py-10 text-center">
-              <FileSearch size={28} strokeWidth={1.5} className="text-ink/30" aria-hidden="true" />
-              <p className="text-sm text-ink/60">Aucune prédiction à afficher. Lancez-en une nouvelle.</p>
-            </div>
-          )}
+  if (!last) {
+    return (
+      <div className="page">
+        <div className="wrap">
+          <div className="empty">
+            <h2 className="display">Aucune estimation à afficher.</h2>
+            <Link className="btn" href="/predict">
+              Estimer ma note
+            </Link>
+          </div>
         </div>
-      </section>
-    </AppShell>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page">
+      <div className="wrap">
+        <div className="page-h">
+          <div>
+            <span className="eyebrow">Résultat</span>
+            <h1 className="display" style={{ marginTop: '.7rem' }}>
+              Votre copie est corrigée.
+            </h1>
+          </div>
+          <div className="row">
+            <Link className="btn ghost" href="/predict">
+              Refaire une estimation
+            </Link>
+            <Link className="btn" href="/history">
+              Mon historique <ArrowRight className="ar" size={18} aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="result">
+          <div className="stack" style={{ ['--s' as string]: '1.5rem' }}>
+            <ScoreSheet score={last.output.predicted_score} at={last.at} copyNumber={save.count} />
+            <Importance output={last.output} vars={last.vars} />
+          </div>
+          <div className="stack" style={{ ['--s' as string]: '1.5rem' }}>
+            <RecoCard output={last.output} />
+            <p className="tiny muted" style={{ maxWidth: '30rem' }}>
+              L’assistant ne reçoit que votre score et les variables sous le seuil. Il ne voit pas vos données brutes et ne peut pas modifier votre note.
+            </p>
+            <SaveStatus state={save.state} modelName={last.output.model_name} at={last.at} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
-export default function ResultPage() {
-  return (
-    <ProtectedRoute role="student" redirectTo="/login">
-      <ResultInner />
-    </ProtectedRoute>
-  );
-}
+export default ResultView;

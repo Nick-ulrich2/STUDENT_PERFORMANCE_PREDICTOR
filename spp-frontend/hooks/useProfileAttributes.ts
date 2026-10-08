@@ -55,10 +55,11 @@ export function useProfileAttributes(token: string | null) {
         setState((s) => ({ ...s, error: response.error.detail }));
         return false;
       }
-      await load();
+      // The PUT echoes the stored row: what the form shows afterwards is what was saved.
+      setState({ loading: false, error: null, attributes: response.data });
       return true;
     },
-    [token, load],
+    [token],
   );
 
   return { ...state, saving, save, refresh: () => load() };
