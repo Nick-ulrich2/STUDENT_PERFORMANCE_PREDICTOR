@@ -66,6 +66,9 @@ Pour arrêter proprement les services de dev :
 
 ./scripts/stop-local.sh
 
+## Données
+`data/SPP.csv` (6 607 lignes, 21 colonnes) provient du jeu Kaggle « Student Performance Factors » ; vérifier sa licence sur la page du jeu avant toute diffusion publique.
+
 ## Lancer les tests
 Backend : `pytest` (52 tests). Frontend : `cd spp-frontend && npm test` (Vitest, logique métier), puis `npm run lint`,
 `npx tsc --noEmit` et `npm run build`. Les mêmes contrôles tournent sur GitHub (`.github/workflows/ci.yml`).

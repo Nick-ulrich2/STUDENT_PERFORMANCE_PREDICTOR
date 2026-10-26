@@ -33,20 +33,20 @@ Non encore implemente : execution distante de la migration, gestion persistante 
 
 ## 3. Current Project Status
 
-| Fonctionnalite | Fichiers | Etat | Fonctionnement et limites |
+> Mise à jour du 2026-10-26 (les sections 4 à 15 décrivent l'historique de conception et restent valides pour le modèle).
+
+| Fonctionnalité | Fichiers | État | Fonctionnement et limites |
 |---|---|---|---|
-| Analyse exploratoire et preparation | `notebooks/data_science.ipynb`, `data/SPP.csv` | ✅ Termine pour le notebook | Analyse du dataset, split, selection de variables, entrainement et evaluation. Le notebook reste la source de procedure, pas un script reproductible de production. |
-| Selection des features finales | `notebooks/final_features_list.csv`, notebook | ✅ Termine | Six variables sont retenues : `Attendance`, `Hours_Studied`, `Previous_Scores`, `Tutoring_Sessions`, `Access_to_Resources`, `Parental_Involvement`. La justification repose sur permutation importance CV et comparaison de modeles. |
-| Pipeline ML serialize | `app/model/ridge_model_final.joblib`, `notebooks/ridge_model_final.joblib` | ✅ Termine, a controler | Pipeline `ColumnTransformer` + `Ridge(alpha=10.0)`. Deux copies existent. La version scikit-learn et la parite notebook/API doivent rester controlees. |
-| Chargement du modele | `app/model_loader.py` | ✅ Termine | Chargement joblib, verification de `predict` et de l'etape `model`, avertissement de version. La version attendue `1.9.1` est explicite et le chargement de fichier absent ou invalide produit une erreur claire. |
-| Endpoint de sante | `app/main.py` route `GET /` | ✅ Termine | Retourne le nom du modele et l'ordre des features si le pipeline est charge. |
-| Prediction | `app/main.py` route `POST /predict` | ✅ Termine | Construit une ligne pandas, appelle le pipeline, borne la sortie a `[0, 100]`, renvoie coefficients et seuils et persiste la prediction en best-effort. |
-| Validation d'entree | `app/schemas.py` | ✅ Termine | Types, bornes, categories litterales et refus des champs supplementaires. Les bornes ne sont pas toutes exactement celles observees dans le dataset. |
-| CORS | `app/main.py` | 🟡 Partiellement termine | Origines localhost:8501 et localhost:3000 autorisees. Aucun frontend correspondant n'est present dans le depot. |
-| Tests API et RLS | `app/test_main.py`, `app/test_rls_integration.py` | ✅ Suite executee | Dix-neuf tests couvrent API, persistance, JWT ES256/JWKS et RLS reel contre PostgreSQL Docker. Resultat verifie : `19 passed`, avec six avertissements de deprecation. |
-| Base de donnees | `supabase/migrations/`, `app/repository.py`, `app/main.py` | 🟢 Implementation terminee, validation staging requise | Tables `model_versions` et `predictions`, RLS, repository et routes de persistance sont implementes ; un test RLS PostgreSQL local passe, mais les vrais comptes Supabase restent a tester. |
-| Frontend | Aucun fichier present | 🔴 Non termine | La cible est Next.js/BFF selon la roadmap, mais aucun fichier frontend n'est present. |
-| Deploiement | Aucun Docker/CI/config de deploiement | 🔴 Non termine | Aucune configuration de production verifiee. |
+| Analyse exploratoire et préparation | `notebooks/data_science.ipynb`, `data/SPP.csv` | ✅ Terminé | Source de procédure, pas un script d'entraînement reproductible. |
+| Sélection des features | `notebooks/final_features_list.csv` | ✅ Terminé | Six variables : `Attendance`, `Hours_Studied`, `Previous_Scores`, `Tutoring_Sessions`, `Access_to_Resources`, `Parental_Involvement`. |
+| Pipeline ML sérialisé | `app/model/ridge_model_final.joblib` (copie identique dans `notebooks/`) | ✅ Terminé | `ColumnTransformer` + `Ridge(alpha=10)`, scikit-learn 1.9.1 contrôlé au chargement. |
+| API de prédiction | `app/main.py` | ✅ Terminé | `/predict`, `/predict/from-activity`, `/predict/recommendation` (LLM, 10 appels/min/utilisateur), activités, profil, `/admin/*`. |
+| Authentification et rôles | `app/auth.py`, migrations 0005-0008 | ✅ Terminé | JWT ES256/JWKS ; rôle lu uniquement dans `app_metadata` ; promotion par la clé `service_role` côté serveur. |
+| Base de données | `supabase/migrations/0001…0008` | ✅ Terminé | RLS testée sur PostgreSQL Docker et sur Supabase. |
+| Frontend | `spp-frontend/` | ✅ Terminé | Next.js 16, design « copie corrigée », contexte d'authentification unique, gardes de routes par rôle. |
+| Tests | `app/test_main.py`, `app/test_rls_integration.py`, `spp-frontend/lib/lib.test.ts` | ✅ 52 + 24 | Pas de tests de composants ni de bout en bout automatisés. |
+| CI / dépendances | `.github/` | ✅ Terminé (à pousser) | CI backend + frontend, Dependabot (bibliothèques du modèle protégées), `keep-alive`. |
+| Déploiement | Render, Vercel | 🟡 En production | Plans gratuits : Render dort après ~15 min, Supabase se met en pause après 7 jours d'inactivité. `NEXT_PUBLIC_SITE_URL` à définir. |
 
 ## 4. Architecture
 
@@ -428,20 +428,15 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 
 ## 16. Current Status Matrix
 
-| Domaine | Etat | Derniere realisation | Prochaine etape |
+| Domaine | État | Dernière réalisation | Prochaine étape |
 |---|---|---|---|
-| Problem Definition | ✅ | Objectif, public étudiant et rôles student/admin établis | Préciser les critères de succès du MVP |
-| Data | ✅ | CSV inspecte, schema et qualite connus | Documenter source/licence et traiter le score 101 |
-| Cleaning | 🟡 | Preprocessor notebook large et analyse des manquants | Formaliser un script reproductible |
-| EDA | ✅ | Figures et analyses dans notebook | Conserver un resume lisible hors notebook |
-| Feature Engineering | ✅ | Six features finales | Revalider selection apres correction des incoherences |
-| ML | ✅ | Ridge, Random Forest, Gradient Boosting compares | Reproduire les metriques avec une procedure propre |
-| Model Selection | ✅ | Ridge alpha 10 selectionne | Corriger la cellule RMSE et documenter la version |
-| API | ✅ | `/`, `/predict` et les trois routes Supabase connectees | Tester end-to-end avec la migration et de vrais JWT |
-| Tests | ✅ | Quatorze tests executes avec fixtures JWT ES256/JWKS | Ajouter ensuite tests d'integration Supabase, RLS et isolation |
-| Database | 🟡 | Migration `predictions` et policies RLS versionnees | Executer la migration et tester student/admin dans Supabase |
-| Frontend | 🔴 | Aucun code present | Decider et implementer un client |
-| Deployment | 🔴 | Aucun artefact | Ajouter configuration apres stabilisation |
+| Problème métier | ✅ | Objectifs, rôles student/admin, cahier des charges agile | Mesurer l'usage réel après la soutenance |
+| Données | ✅ | CSV inspecté, source Kaggle indiquée | Confirmer la licence ; traiter la cible à 101 |
+| ML | ✅ | Ridge alpha 10, R² 0,7063 sur le test | Collecter des notes réelles, réentraîner |
+| API | ✅ | 52 tests, rate limit LLM | Pagination des listes admin (1.1) |
+| Base de données | ✅ | Migrations 0001-0008, RLS validée | Rejouer les migrations sur une base vierge à chaque évolution |
+| Frontend | ✅ | Refonte d'après la maquette, 24 tests unitaires | Tests de composants et e2e (Playwright) |
+| Déploiement | 🟡 | Render + Vercel + CI + keep-alive | Réglages manuels (variables, secrets) |
 
 ## 17. Next Phase Roadmap - Database
 
@@ -460,19 +455,15 @@ Le code ne permet pas d'inferer le niveau reel de l'etudiant. Ces priorites sont
 | 11. Tests | Ajouter tests unitaires, integration et contraintes | Fixtures, rollback, TestClient | Tests verts dans l'environnement documente |
 | 12. Validation | Verifier historique, migrations, logs et donnees sensibles | Audit et retention | Vertical slice accepte avant frontend |
 
-La prochaine tache recommandee est d'executer les migrations `supabase/migrations/_create_model_versions.sql`, `supabase/migrations/_create_predictions.sql` et `supabase/migrations/_predictions_policies.sql` dans le SQL Editor Supabase, puis de verifier l'isolation student et la lecture globale admin avec de vrais JWT.
+Cette phase est terminée : voir les migrations `0001` à `0008` et la section 3.
 
 ## 18. Instructions for the Next AI
 
-Avant de modifier le code, lis d'abord ce document puis inspecte les fichiers concernes.
+Avant de modifier le code, lis ce document, le `README.md` et le cahier des charges, puis inspecte les fichiers concernés.
 
-Le produit construit est un backend FastAPI de prediction de `Exam_Score` utilisant un pipeline Ridge serialise. L'etat actuel est pre-database : ne suppose pas qu'un frontend, un utilisateur ou une table existe parce qu'un commentaire CORS les mentionne. Preserve le contrat actuel des six features et l'ordre defini dans `app/main.py` tant qu'une regeneration du modele n'est pas decidee.
+Le produit est un service complet : API FastAPI (modèle Ridge sérialisé), base Supabase avec RLS, frontend Next.js. Conserve le contrat des six variables et leur ordre (`FEATURE_ORDER` dans `app/main.py`) tant qu'un réentraînement n'est pas décidé ; ne bascule jamais le rôle vers `user_metadata` ; ne fais jamais voir au LLM les données brutes d'un étudiant.
 
-Fichiers prioritaires : `app/main.py`, `app/model_loader.py`, `app/schemas.py`, `app/test_main.py`, `app/model/ridge_model_final.joblib`, `notebooks/data_science.ipynb`, `requirements.txt` et `README.md`.
-
-Contraintes : ne pas remplacer le pipeline final par le preprocessor large sans verifier la compatibilite ; ne pas presenter les tables proposees comme decisions ; ne pas introduire de donnees personnelles sans cas d'usage ; ne pas casser les routes existantes ; executer une verification ciblee apres chaque edit ; garder les artefacts et la version scikit-learn coherents.
-
-Premiere action conseillee : creer le projet Supabase, puis ecrire les migrations SQL de `profiles`, `model_versions` et `predictions`, avec les policies RLS student/admin. Le choix `supabase-py` versus SQLAlchemy doit etre fait avant la connexion FastAPI.
+Vérifications avant livraison : `pytest`, puis dans `spp-frontend` : `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run build`. Les plans gratuits dorment : vérifier d'abord que Supabase n'est pas en pause (`Failed to fetch` à la connexion).
 
 ## 19. Decisions / Assumptions / Known Issues
 
@@ -490,8 +481,9 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 - Le client `supabase-py` et les migrations SQL natives Supabase sont actés ; SQLAlchemy et Alembic ne font pas partie du MVP.
 - Retention, consentement et exposition de l'historique.
 - Strategie finale de synchronisation de `profiles.role` avec le claim JWT.
-- Source et licence du dataset.
-- Traitement de la cible `Exam_Score=101`.
+- Licence du dataset Kaggle « Student Performance Factors » à confirmer sur la page du jeu.
+- Traitement de la cible `Exam_Score=101` (1 ligne).
+- Paliers de couleur 80/65/50 : conservés, mais 99 % des prédictions tombent entre 60 et 75.
 
 ### Assumptions
 
@@ -504,8 +496,7 @@ Premiere action conseillee : creer le projet Supabase, puis ecrire les migration
 
 ### Known issues
 
-- Les tests ont ete executes apres installation de `requirements.txt` : `19 passed`, avec des avertissements de deprecation Starlette/httpx/Supabase.
-- Le notebook contient une sortie RMSE incoherente dans une cellule ; la valeur coherente est 2.0375.
+- Backend : `52 passed` (avertissements de dépréciation Starlette/httpx/Supabase). Frontend : `24 passed` (Vitest).
 - La version `EXPECTED_SKLEARN_VERSION` est fixee a `1.9.1` ; elle devra etre mise a jour uniquement avec une regeneration et un test de compatibilite de l'artefact.
 - Le preprocessor large sauvegarde et le pipeline final API ne sont pas le meme artefact.
 - Le test RLS local reel depend de Docker et passe contre PostgreSQL 16 ; un test contre une instance Supabase distante reste a executer.
@@ -614,14 +605,11 @@ L'API depend de la disponibilite et de la rotation des cles JWKS Supabase, tandi
 
 ## 21. Final Handoff Summary
 
-Le socle ML et l'API de prediction existent. La persistance Supabase du MVP authentifie est implementee avec `model_versions` + `predictions`, snapshots d'entree, `user_id`, reference immuable au modele et policies RLS student/admin.
+Le produit est livré : modèle Ridge (R² 0,7063), API sécurisée, base Supabase avec RLS, frontend refondu, recommandations LLM, CI et déploiement gratuit. Les risques restants sont opérationnels (pauses des offres gratuites) et statistiques (modèle entraîné sur un jeu public, pas sur l'établissement).
 
 ## Handoff Status
 
-- **Etat global actuel :** 🟡 Backend ML fonctionnel avec persistance Supabase versionnee et RLS localement valide.
-- **Derniere etape terminee :** implementation de la persistance Supabase, des policies RLS et du test PostgreSQL reel ; `19 passed`.
-- **Prochaine phase :** validation staging Supabase avec de vrais comptes et claims JWT.
-- **Prochaine etape :** executer les migrations dans Supabase puis realiser un test end-to-end student/admin.
-- **Fichiers prioritaires :** `app/main.py`, `app/model_loader.py`, `app/schemas.py`, `app/test_main.py`, `requirements.txt`, `notebooks/data_science.ipynb`.
-- **Points necessitant validation :** source/licence du dataset, cible 101, seuils pedagogiques, incoherence RMSE, execution distante des policies RLS et seed manuel du premier admin.
-- **Premiere action recommandee pour la validation staging :** executer les migrations `supabase/migrations/_create_model_versions.sql`, `supabase/migrations/_create_predictions.sql` et `supabase/migrations/_predictions_policies.sql` dans le dashboard Supabase, puis verifier les policies RLS avec de vrais comptes.
+- **État global :** 🟢 En production, soutenance à préparer.
+- **Dernière étape terminée :** refonte du frontend, correctifs de sécurité des dépendances, CI, tests frontend, limitation de débit du LLM (2026-10-26).
+- **Prochaine phase :** soutenance, puis fiabilité du modèle.
+- **Points nécessitant validation :** licence du dataset, cible 101, secrets du workflow `keep-alive`, `NEXT_PUBLIC_SITE_URL` sur Vercel, URL de redirection `/reset-password` dans Supabase.

@@ -1,5 +1,22 @@
 # Audit du projet Student Performance Predictor
 
+## 0. Mise à jour du 2026-10-26
+
+| Domaine | Constat | Action |
+|---|---|---|
+| Dépendances frontend | `npm audit` : 3 failles (dont 1 critique) sur Next.js 16.3.x, `sharp`, `source-map-js` | Corrigé : Next 16.4.3, 0 vulnérabilité |
+| Dépendances backend | PyJWT 2.13.0 en retard d'un cycle de correctifs | Passé en 2.15.0, 52 tests verts |
+| Dépendances du modèle | Dependabot proposait pandas 3 / numpy 2.5 | Bloqué par `.github/dependabot.yml` : un changement de version peut casser le pipeline joblib |
+| Secrets | Analyse de tout l'historique git et des fichiers suivis | Aucun secret versionné |
+| LLM | Route `/predict/recommendation` sans limite : quota Groq gratuit exposé à tout compte | Limite de 10 appels/min/utilisateur (429) |
+| CORS | Vérifié en production : seule l'origine du frontend est autorisée | Conforme |
+| Accessibilité | Analyse automatisée axe-core (WCAG 2 A/AA) : page d'accueil et connexion | 1 niveau de titre corrigé ; 0 violation restante hors faux positif de contraste hors écran |
+| Tests | Backend 52, frontend 24 (logique) ; pas de tests de composants ni de bout en bout | Reste à faire après la soutenance |
+| Exploitation | Supabase en pause après 7 jours d'inactivité, API Render endormie après 15 min | Workflow `keep-alive`, écran d'attente dans l'interface |
+| Production | Frontend déployé en retard sur le dépôt ; `NEXT_PUBLIC_SITE_URL` absente (canonical = localhost) | À corriger côté Vercel |
+
+---
+
 ## 1. Objet et périmètre
 
 Ce document consolide les résultats déjà obtenus dans cette session sur le projet Student Performance Predictor, sans inventer de preuve non vérifiée.

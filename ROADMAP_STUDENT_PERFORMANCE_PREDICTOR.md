@@ -1,231 +1,91 @@
 # 🚀 ROADMAP COMPLÈTE — Student Performance Predictor (SPP)
 
-> **Objectif :** construire une application complète capable d’estimer la performance académique d’un étudiant à partir de ses habitudes, de son environnement et de ses caractéristiques scolaires, puis de fournir des recommandations personnalisées.
+> **Objectif :** application complète qui estime la performance académique d'un étudiant à partir de ses habitudes, puis fournit des recommandations personnalisées.
+>
+> **Mise à jour : 2026-10-26.** Le produit est livré en production (frontend Vercel, API Render, base Supabase). Les phases 0 à 8 sont terminées, sauf les points signalés 🟡 ci-dessous.
 
 ---
 
-## 🟢 PHASE 0 — Définition du problème métier
-
-**Statut : 🟡 En cours de clôture**
+## 🟢 PHASE 0 — Définition du problème métier — ✅ Terminée
 
 | Étape | Statut | Description |
 |---|---|---|
-| **0.1 Définir le problème métier** | ✅ | Aider les étudiants à comprendre et anticiper leur performance académique. |
-| **0.2 Identifier les utilisateurs cibles** | ✅ | Étudiants principalement ; enseignants et conseillers potentiellement plus tard. |
-| **0.3 Définir le MVP et les fonctionnalités futures** | ✅ | MVP défini ; certaines fonctionnalités comme la programmation d’examens sont reportées en v1.2/v2. |
-| **0.4 Définir les contraintes** | ⬜ | Formaliser le temps disponible, les compétences, le budget et les contraintes d’hébergement/API. |
+| 0.1 Définir le problème métier | ✅ | Aider les étudiants à comprendre et anticiper leur performance académique. |
+| 0.2 Identifier les utilisateurs cibles | ✅ | Étudiants et administrateur ; enseignants reportés en 2.0. |
+| 0.3 Définir le MVP et les fonctionnalités futures | ✅ | MVP livré ; examens programmés et notifications reportés (1.2). |
+| 0.4 Définir les contraintes | ✅ | Budget 0 € (offres gratuites), un développeur, soutenance en octobre-novembre 2026. |
 
-### 🎯 À clôturer
-
-Définir précisément :
-- le délai cible pour obtenir un **MVP démontrable** ;
-- le budget disponible ;
-- si les services doivent rester **100 % gratuits / free-tier**.
-
----
-
-## 🏗️ PHASE 1 — Architecture technique
-
-**Statut : 🟢 Quasiment terminée**
+## 🏗️ PHASE 1 — Architecture technique — ✅ Terminée
 
 | Étape | Statut | Décision |
 |---|---|---|
-| **1.1 Frontend** | ✅ | Next.js |
-| **1.2 Backend** | ✅ | FastAPI |
-| **1.3 Communication frontend/backend** | ✅ | Architecture BFF : le navigateur ne communique jamais directement avec FastAPI. |
-| **1.4 Base de données** | ✅ | Supabase / PostgreSQL |
-| **1.5 Sérialisation du modèle** | ✅ | Joblib |
-| **1.6 Schéma des habitudes utilisateur** | ⏸️ | Dépend de la sélection finale des variables du modèle en Phase 2. |
-| **1.7 Choix du LLM** | ⬜ | À définir plus tard ; non prioritaire pour le MVP. |
+| 1.1 Frontend | ✅ | Next.js 16 (App Router), design « copie corrigée » |
+| 1.2 Backend | ✅ | FastAPI |
+| 1.3 Communication frontend/backend | ✅ | Le navigateur appelle l'API directement avec le JWT Supabase ; CORS restreint à l'origine du frontend (pas de BFF : la roadmap initiale le prévoyait, la décision a changé). |
+| 1.4 Base de données | ✅ | Supabase / PostgreSQL |
+| 1.5 Sérialisation du modèle | ✅ | Joblib |
+| 1.6 Schéma des habitudes utilisateur | ✅ | `activity_logs` + attributs de profil, agrégés en 6 variables (migration 0006). |
+| 1.7 Choix du LLM | ✅ | Groq (gratuit), modèle `qwen/qwen3.8-27b`. |
 
-### 🔑 Décision importante
-
-La **Phase 2 doit être avancée avant de finaliser l’étape 1.6**.
-
-Pourquoi ?
-
-Parce que le schéma de la base de données doit être construit à partir des **variables réellement retenues par le modèle**.
-
----
-
-## 🧠 PHASE 2 — Data Science & Machine Learning
-
-**Statut : 🟡 Réalisée dans le dépôt, à consolider**
+## 🧠 PHASE 2 — Data Science & Machine Learning — ✅ Terminée
 
 | Étape | Statut | Objectif |
 |---|---|---|
-| **2.1 Recherche & choix du dataset** | ✅ | Dataset local `data/SPP.csv` inspecté : 6607 lignes, 21 colonnes. |
-| **2.2 Exploration des données (EDA)** | ✅ | EDA et figures présentes dans le notebook. |
-| **2.3 Data cleaning** | 🟡 | Valeurs manquantes analysées ; le pipeline large contient imputation, mais la procedure de production reste à formaliser. |
-| **2.4 Feature engineering** | 🟡 | Preprocessing présent ; pas de nouvelles features métier vérifiées. |
-| **2.5 Feature selection** | ✅ | Six variables finales documentées dans `notebooks/final_features_list.csv`. |
-| **2.6 Train/Test split + Cross-validation** | ✅ | Split 80/20 et validation croisée à cinq folds présents dans le notebook. |
-| **2.7 Sélection & entraînement des modèles** | ✅ | Ridge, Random Forest et Gradient Boosting comparés. |
-| **2.8 Évaluation** | 🟡 | Métriques test présentes ; une sortie RMSE du notebook est incohérente et doit être corrigée. |
-| **2.9 Sérialisation** | ✅ | Pipeline Ridge `alpha=10` sauvegardé avec joblib. |
+| 2.1 Dataset | ✅ | `data/SPP.csv` : 6 607 lignes, 21 colonnes (Kaggle « Student Performance Factors » ; licence à confirmer sur la page du jeu). |
+| 2.2 EDA | ✅ | Notebook et figures. |
+| 2.3 Data cleaning | ✅ | Pipeline avec imputation, documenté dans le notebook. |
+| 2.4 Feature engineering | ✅ | Pas de feature dérivée retenue (choix assumé : lisibilité). |
+| 2.5 Feature selection | ✅ | Six variables (`notebooks/final_features_list.csv`). |
+| 2.6 Split + validation croisée | ✅ | 80/20, 5 plis. |
+| 2.7 Modèles | ✅ | Ridge, Random Forest, Gradient Boosting comparés ; Ridge `alpha=10` retenu. |
+| 2.8 Évaluation | ✅ | Test : MAE 0,9533 · RMSE 2,0375 · R² 0,7063 (sortie RMSE cohérente dans le notebook). |
+| 2.9 Sérialisation | ✅ | Pipeline Ridge joblib, versionné par hash dans `model_versions`. |
 
-### 🔑 Sortie critique de la Phase 2
+Limite connue : la cible contient une valeur à 101 (1 ligne sur 6 607) alors que l'API borne le score à 100.
 
-L’étape **2.5 — Feature Selection** doit produire une liste claire du type :
+## ⚡ PHASE 3 — Backend API — ✅ Terminée
 
-```text
-Variables finales du modèle
-├── Hours_Studied
-├── Attendance
-├── Sleep_Hours
-├── Previous_Scores
-├── Tutoring_Sessions
-├── ...
-└── ...
-```
+FastAPI, `/predict`, `/predict/from-activity`, `/predict/recommendation`, activités, profil, administration, authentification JWT ES256/JWKS, validation Pydantic stricte, limitation de débit sur la route LLM. **52 tests** verts.
 
-➡️ Cette liste permettra ensuite de définir précisément le **schéma de la base de données** et le **formulaire utilisateur**.
+## 🗄️ PHASE 4 — Base de données — ✅ Terminée
 
----
+Migrations `0001` à `0008`, RLS sur `profiles`, `predictions`, `model_versions`, `activity_logs`, testée sur PostgreSQL réel (Docker) et sur Supabase.
 
-## ⚡ PHASE 3 — Backend API
+## 🎨 PHASE 5 — Frontend — ✅ Terminée
 
-**Technologie : FastAPI**
+Refonte complète d'après la maquette : page publique, inscription/connexion/mot de passe oublié, tableau de bord, suivi (chronos, présence, journal avec corrections), prédiction manuelle ou depuis l'activité, résultat, historique, espace administrateur (vue d'ensemble, prédictions, utilisateurs, export CSV), pages 403/404 et écran de réveil du serveur.
 
-**Statut : 🟢 Largement avancée, quasi terminée**
+## 🤖 PHASE 6 — LLM & Recommandations — ✅ Terminée
+
+« Le ML prédit, l'IA explique » : le LLM ne reçoit que le score et les variables sous le seuil, jamais les données brutes ; 503 géré, 429 au-delà de 10 appels par minute et par utilisateur.
+
+## 🧪 PHASE 7 — Tests & Qualité — 🟡 Presque terminée
 
 | Étape | Statut | Objectif |
 |---|---|---|
-| **3.1 Architecture FastAPI** | 🟡 | Application monolithique actuelle ; refactor routers/services à venir si nécessaire. |
-| **3.2 Endpoint `/predict`** | ✅ | Route fonctionnelle avec six features. |
-| **3.3 Chargement du modèle** | ✅ | Pipeline chargé au lifespan et contrôlé. |
-| **3.4 Validation des données** | ✅ | Pydantic valide bornes, catégories et champs supplémentaires. |
-| **3.5 Gestion des erreurs** | 🟡 | Erreurs de chargement et validation couvertes ; couverture interne à compléter. |
-| **3.6 Tests unitaires** | ✅ | Quatorze tests exécutés avec succès, dont les fixtures JWT ES256/JWKS. |
-| **3.7 Auth et rôles** | 🟢 | Vérification JWT ES256/JWKS, rôles et routes Supabase implémentés ; validation distante RLS à faire. |
+| 7.1 Tests backend | ✅ | 52 tests (API, JWT, rôles, RLS, LLM simulé, limitation de débit). |
+| 7.2 Tests frontend | 🟡 | 24 tests unitaires de la logique (Vitest) + parcours manuels sur la prod ; pas de tests de composants ni de bout en bout automatisés. |
+| 7.3 Code review / Clean Code | ✅ | Audits successifs, dette morte supprimée, 0 vulnérabilité `npm audit`. |
 
----
-
-## 🗄️ PHASE 4 — Base de données
-
-**Technologie : Supabase / PostgreSQL**
-
-**Statut : 🟡 Décision actée, implémentation à faire**
+## 🚀 PHASE 8 — Déploiement — 🟡 En production, trois réglages manuels restants
 
 | Étape | Statut | Objectif |
 |---|---|---|
-| **4.1 ADR Supabase et rôles** | ✅ | `docs/ADR-001-supabase-auth-and-roles.md` fixe Auth, `student`, `admin`, RLS et périmètre. |
-| **4.2 Gestion des utilisateurs** | ⬜ | Utiliser `auth.users` et `profiles`, sans recréer la table Auth. |
-| **4.3 Historique des prédictions** | 🟡 | Route et migration `predictions` implémentées ; exécution distante à valider. |
-| **4.4 Migrations** | 🟡 | Première migration SQL versionnée dans `supabase/migrations`. |
-| **4.5 Policies RLS** | 🟡 | Policies student/admin écrites ; test réel Supabase à effectuer. |
+| 8.1 FastAPI | ✅ | Render (plan gratuit, réveil de 30 à 60 s). |
+| 8.2 Next.js | ✅ | Vercel. |
+| 8.3 Variables d'environnement | 🟡 | `NEXT_PUBLIC_SITE_URL` à définir sur Vercel ; URL de redirection `/reset-password` à autoriser dans Supabase. |
+| 8.4 Monitoring basique | 🟡 | CI GitHub et workflow `keep-alive` (évite la pause Supabase) ; secrets du dépôt à renseigner. |
 
 ---
 
-## 🎨 PHASE 5 — Frontend
+# 🗺️ ORDRE DE TRAVAIL ACTUEL
 
-**Technologie : Next.js**
-
-**Statut : ⬜ À faire**
-
-| Étape | Statut | Objectif |
-|---|---|---|
-| **5.1 Formulaire d’onboarding** | ⬜ | Collecter les variables retenues par le modèle. |
-| **5.2 Communication BFF → FastAPI** | ⬜ | Envoyer les données au backend via le BFF. |
-| **5.3 Résultat & Dashboard** | ⬜ | Afficher la prédiction et les informations utiles. |
-| **5.4 Authentification** | ⬜ | Intégrer Supabase Auth. |
+1. Pousser les derniers commits et vérifier le redéploiement.
+2. Restaurer Supabase si le projet est en pause, puis renseigner les secrets du workflow `keep-alive`.
+3. Préparer et répéter la soutenance (diaporama, démo en direct, vidéo de secours).
+4. Après la soutenance : fiabilité du modèle (collecte de notes réelles, réentraînement, suivi de dérive).
 
 ---
-
-## 🤖 PHASE 6 — LLM & Recommandations
-
-**Statut : ⬜ À faire**
-
-Cette phase vient **après la prédiction ML fonctionnelle**.
-
-| Étape | Statut | Objectif |
-|---|---|---|
-| **6.1 Choix du LLM** | ⬜ | Choisir le modèle adapté aux contraintes du projet. |
-| **6.2 Prompt engineering** | ⬜ | Générer des recommandations à partir des résultats ML. |
-| **6.3 Intégration backend** | ⬜ | Connecter le LLM à l’application côté serveur. |
-
-> ⚠️ Le LLM ne doit pas remplacer le modèle ML.  
-> **ML = prédiction.**  
-> **LLM = interprétation et recommandations.**
-
----
-
-## 🧪 PHASE 7 — Tests & Qualité
-
-**Statut : ⬜ À faire**
-
-| Étape | Statut | Objectif |
-|---|---|---|
-| **7.1 Tests backend** | ⬜ | Vérifier les endpoints et la logique métier. |
-| **7.2 Tests frontend** | ⬜ | Vérifier les composants et parcours utilisateur. |
-| **7.3 Code review / Clean Code** | ⬜ | Améliorer architecture, lisibilité, sécurité et maintenabilité. |
-
----
-
-## 🚀 PHASE 8 — Déploiement
-
-**Statut : ⬜ À faire**
-
-| Étape | Statut | Objectif |
-|---|---|---|
-| **8.1 Déployer FastAPI** | ⬜ | Render / Railway ou alternative adaptée. |
-| **8.2 Déployer Next.js** | ⬜ | Vercel. |
-| **8.3 Variables d’environnement** | ⬜ | Sécuriser les clés API, DB et secrets. |
-| **8.4 Monitoring basique** | ⬜ | Logs, erreurs et disponibilité de l’application. |
-
----
-
-# 🗺️ VUE GLOBALE DU PROJET
-
-```text
-PHASE 0
-Définition du problème
-        ↓
-PHASE 1
-Architecture technique
-        ↓
-PHASE 2
-DATA SCIENCE / MACHINE LEARNING
-        ↓
-   Feature Selection
-        ↓
-PHASE 4
-Base de données
-        ↓
-PHASE 3
-Backend FastAPI
-        ↓
-PHASE 5
-Frontend Next.js
-        ↓
-PHASE 6
-LLM + Recommandations
-        ↓
-PHASE 7
-Tests + Qualité
-        ↓
-PHASE 8
-Déploiement
-        ↓
-        🚀 SPP MVP
-```
-
----
-
-# 🎯 ORDRE DE TRAVAIL ACTUEL
-
-Notre priorité immédiate est :
-
-**PHASE 4 → Base de données Supabase avec Auth et rôles**
-
-Ordre d’exécution :
-
-**ADR validé → projet Supabase → `profiles`/`model_versions`/`predictions` → migrations SQL → RLS → connexion FastAPI → tests de rôle et d'isolation**
-
-La sélection **2.5** étant terminée et la Phase 3 étant largement avancée, la prochaine étape est **Phase 4** sans concevoir la base de données à l’aveugle.
-
-
-
 
 Récapitulatif — Étape 1 : Conception fonctionnelle du projet
 Sujet : Student Performance Predictor (Full-Stack + Data Science)

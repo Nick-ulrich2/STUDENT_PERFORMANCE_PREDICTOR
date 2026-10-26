@@ -25,3 +25,5 @@ venv/
 node_modules/
 .next/
 *.tsbuildinfo
+# Livrables personnels (maquette, vidéo, parcours) : hors dépôt
+Claude outputs/
