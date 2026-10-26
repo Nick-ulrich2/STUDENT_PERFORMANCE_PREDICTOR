@@ -21,6 +21,7 @@ from app.schemas import (
     UserSummary,
 )
 from app.model_loader import load_pipeline
+from app.ratelimit import recommendation_limiter
 from app.auth import CurrentUser, require_admin, require_user
 from app import repository
 from app.llm import RecommendationError, generate_recommendation
@@ -454,6 +455,7 @@ def predict_from_activity(window_days: int = 7, current_user: CurrentUser = Depe
 def get_recommendation(
     data: RecommendationRequest, current_user: CurrentUser = Depends(require_user)
 ):
+    recommendation_limiter.check(current_user["id"])
     try:
         text = generate_recommendation(
             predicted_score=data.predicted_score,

@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # The serialized Ridge pipeline was trained with these versions: bumping
+      # them silently can break joblib.load or change predictions. Upgrade
+      # deliberately, together with a retrain.
+      - dependency-name: scikit-learn
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: pandas
+        update-types: ["version-update:semver-major"]
+      - dependency-name: numpy
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: npm
+    directory: /spp-frontend
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]

@@ -16,6 +16,7 @@ os.environ.setdefault("SUPABASE_ANON_KEY", "anon-key")
 from app.main import app, pipeline_state
 from app.model_loader import load_pipeline
 from app import admin_users, llm, repository
+from app.ratelimit import recommendation_limiter
 
 
 TEST_PRIVATE_KEY = ec.generate_private_key(ec.SECP256R1())
@@ -30,6 +31,11 @@ def _mock_jwks_signing_key(self, token):
 @pytest.fixture(autouse=True)
 def mock_jwks(monkeypatch):
     monkeypatch.setattr(jwt.PyJWKClient, "get_signing_key_from_jwt", _mock_jwks_signing_key)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    recommendation_limiter.reset()
 
 
 @pytest.fixture
@@ -901,3 +907,14 @@ def test_update_user_role_upstream_error_returns_503(client, monkeypatch):
         "/admin/users/user-456/role", json={"role": "admin"}, headers=_headers(role="admin")
     )
     assert response.status_code == 503
+
+def test_recommendation_is_rate_limited_per_user(client, monkeypatch):
+    monkeypatch.setattr("app.main.generate_recommendation", lambda **_: "ok")
+    statuses = [
+        client.post("/predict/recommendation", json=_recommendation_payload(), headers=_headers()).status_code
+        for _ in range(11)
+    ]
+    assert statuses[:10] == [200] * 10
+    assert statuses[10] == 429
+    blocked = client.post("/predict/recommendation", json=_recommendation_payload(), headers=_headers())
+    assert blocked.headers["Retry-After"].isdigit()

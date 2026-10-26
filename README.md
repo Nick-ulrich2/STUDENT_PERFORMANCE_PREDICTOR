@@ -67,7 +67,15 @@ Pour arrêter proprement les services de dev :
 ./scripts/stop-local.sh
 
 ## Lancer les tests
-pytest
+Backend : `pytest` (52 tests). Frontend : `cd spp-frontend && npm test` (Vitest, logique métier), puis `npm run lint`,
+`npx tsc --noEmit` et `npm run build`. Les mêmes contrôles tournent sur GitHub (`.github/workflows/ci.yml`).
+
+## Exploitation sur les offres gratuites
+- **Supabase** met le projet en pause après 7 jours sans activité : la base disparaît alors du DNS et toute connexion
+  échoue (« Failed to fetch »). Remède : *Restore project* dans le dashboard. Prévention : `.github/workflows/keep-alive.yml`
+  envoie une requête tous les 3 jours (secrets du dépôt : `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `API_URL`).
+- **Render** endort l'API après ~15 min ; le premier appel prend 30 à 60 s. L'interface affiche un écran d'attente.
+- **Groq** : `/predict/recommendation` est limité à 10 appels par minute et par utilisateur (429 au-delà).
 
 ## Preparation Supabase
 

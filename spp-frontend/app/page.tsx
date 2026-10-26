@@ -195,19 +195,19 @@ export default function Page() {
             <Reveal className="flow">
               <div className="node">
                 <span className="pill ink" style={{ background: '#3a372f' }}>Entrée</span>
-                <h4>Vos 6 habitudes</h4>
+                <h3>Vos 6 habitudes</h3>
                 <p>Assiduité, heures, note précédente, tutorat, ressources, implication parentale.</p>
               </div>
               <div className="arrow" aria-hidden="true">→</div>
               <div className="node hot">
                 <span className="pill mark">Calcule seul</span>
-                <h4>Modèle Ridge</h4>
+                <h3>Modèle Ridge</h3>
                 <p>Régression linéaire. Produit la note et le poids de chaque variable. Rien d’autre ne peut la modifier.</p>
               </div>
               <div className="arrow" aria-hidden="true">→</div>
               <div className="node">
                 <span className="pill" style={{ background: '#3a372f', color: '#fff' }}>Explique</span>
-                <h4>Assistant IA</h4>
+                <h3>Assistant IA</h3>
                 <p>Ne reçoit que le score et les variables sous les seuils. Écrit 60 mots en français.</p>
               </div>
             </Reveal>
