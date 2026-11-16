@@ -8,6 +8,7 @@ import { FEATURES, LEVELS_FR, SHORT_LABELS } from '@/lib/features';
 import { NAV, PUBLIC_LINKS } from '@/components/layout/nav';
 import { SITE_DESCRIPTION } from '@/lib/seo';
 import { scoreTone } from '@/lib/scoreTone';
+import { API_ERROR_KEYS, friendlyDetail } from '@/lib/apiErrors';
 
 const ROOT = path.resolve(__dirname, '../..');
 const SOURCE_DIRS = ['app', 'components', 'hooks', 'lib'];
@@ -69,6 +70,7 @@ describe('i18n', () => {
       ...Object.values(NAV).flatMap((items) => items.map((i) => i.label)),
       ...PUBLIC_LINKS.map((l) => l.label),
       ...[90, 70, 55, 10].map((s) => scoreTone(s).label),
+      ...API_ERROR_KEYS,
     ].filter(Boolean);
     expect(keys.filter((k) => !(k in en))).toEqual([]);
   });
@@ -82,6 +84,15 @@ describe('i18n', () => {
     const names = (s: string) => Array.from(s.matchAll(/\{(\w+)\}/g)).map((m) => m[1]).sort();
     const broken = Object.entries(en).filter(([fr, e]) => names(fr).join() !== names(e).join());
     expect(broken.map(([fr]) => fr)).toEqual([]);
+  });
+
+  it('maps raw API failures to actionable messages', () => {
+    expect(friendlyDetail(0, 'x')).toMatch(/joindre le serveur/);
+    expect(friendlyDetail(401, 'Token must contain a user id and a supported application role.')).toMatch(/rôle valide/);
+    expect(friendlyDetail(401, 'Invalid Supabase access token.')).toMatch(/session/);
+    expect(friendlyDetail(422, 'Input should be a valid integer')).toMatch(/invalides/);
+    expect(friendlyDetail(500, 'Request failed with status 500')).toMatch(/erreur/);
+    expect(friendlyDetail(503, 'Le service de recommandation est momentanément indisponible.')).toMatch(/recommandation/);
   });
 
   it('interpolates variables and falls back to the French key', () => {

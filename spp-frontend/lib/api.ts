@@ -1,5 +1,6 @@
 import type { ApiError, ApiResponse, RequestOptions } from '@/types/api';
 import { trackRequest } from '@/lib/pending';
+import { ERR_NETWORK, friendlyDetail } from '@/lib/apiErrors';
 import type {
   PredictionOutput,
   PredictionRecord,
@@ -54,16 +55,17 @@ async function request<T>(
         (Array.isArray(rawDetail) && rawDetail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(' ')) ||
         (typeof payload === 'string' && payload) ||
         `Request failed with status ${response.status}`;
-      return { ok: false, error: { detail: message, status: response.status } };
+      console.error(`[api] ${init.method ?? 'GET'} ${path} -> ${response.status}: ${message}`);
+      return { ok: false, error: { detail: friendlyDetail(response.status, message), status: response.status } };
     }
 
     return { ok: true, data: payload as T };
   } catch (err) {
-    const detail =
-      err instanceof Error && !/failed to fetch|networkerror|load failed/i.test(err.message)
-        ? err.message
-        : 'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.';
-    return { ok: false, error: { detail, status: 0 } satisfies ApiError };
+    console.error(`[api] ${init.method ?? 'GET'} ${path} failed:`, err);
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return { ok: false, error: { detail: err.message, status: 0 } satisfies ApiError };
+    }
+    return { ok: false, error: { detail: ERR_NETWORK, status: 0 } satisfies ApiError };
   } finally {
     endTracking();
   }

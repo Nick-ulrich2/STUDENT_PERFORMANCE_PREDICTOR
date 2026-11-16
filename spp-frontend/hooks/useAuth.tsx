@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useT, type TFunction } from '@/lib/i18n';
+import { ERR_NETWORK } from '@/lib/apiErrors';
 import type {
   AuthResult,
   AuthUser,
@@ -62,7 +63,7 @@ function authError(t: TFunction, message: string | undefined, fallback: string):
   if (/already registered|already exists/i.test(message)) return t('Un compte existe déjà avec cet e-mail.');
   if (/email not confirmed/i.test(message)) return t('Confirmez votre e-mail avant de vous connecter.');
   if (/rate limit/i.test(message)) return t('Trop de tentatives. Réessayez dans quelques minutes.');
-  if (/failed to fetch|networkerror|load failed/i.test(message)) return t('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.');
+  if (/failed to fetch|networkerror|load failed/i.test(message)) return t(ERR_NETWORK);
   if (/password should be at least|weak password/i.test(message)) return t('Mot de passe trop faible. Utilisez au moins 8 caractères.');
   return message;
 }
