@@ -27,3 +27,7 @@ node_modules/
 *.tsbuildinfo
 # Livrables personnels (maquette, vidéo, parcours) : hors dépôt
 Claude outputs/
+
+# test credentials (local only)
+.logs/test-account.txt
+.logs/.tok
