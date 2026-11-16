@@ -10,11 +10,13 @@ import { ScoreSheet } from '@/components/result/ScoreSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 import { loadLastPrediction } from '@/lib/lastPrediction';
+import { useT } from '@/lib/i18n';
 
 const SAVED_WINDOW_MS = 10 * 60_000;
 
 function ResultView() {
   const { token } = useAuth();
+  const t = useT();
   const [last] = useState(loadLastPrediction);
   const [save, setSave] = useState<{ state: SaveState; count: number | null }>({ state: 'checking', count: null });
 
@@ -41,9 +43,9 @@ function ResultView() {
       <div className="page">
         <div className="wrap">
           <div className="empty">
-            <h2 className="display">Aucune estimation à afficher.</h2>
+            <h2 className="display">{t('Aucune estimation à afficher.')}</h2>
             <Link className="btn" href="/predict">
-              Estimer ma note
+              {t('Estimer ma note')}
             </Link>
           </div>
         </div>
@@ -56,17 +58,17 @@ function ResultView() {
       <div className="wrap">
         <div className="page-h">
           <div>
-            <span className="eyebrow">Résultat</span>
+            <span className="eyebrow">{t('Résultat')}</span>
             <h1 className="display" style={{ marginTop: '.7rem' }}>
-              Votre copie est corrigée.
+              {t('Votre copie est corrigée.')}
             </h1>
           </div>
           <div className="row">
             <Link className="btn ghost" href="/predict">
-              Refaire une estimation
+              {t('Refaire une estimation')}
             </Link>
             <Link className="btn" href="/history">
-              Mon historique <ArrowRight className="ar" size={18} aria-hidden="true" />
+              {t('Mon historique')} <ArrowRight className="ar" size={18} aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -79,7 +81,7 @@ function ResultView() {
           <div className="stack" style={{ ['--s' as string]: '1.5rem' }}>
             <RecoCard output={last.output} />
             <p className="tiny muted" style={{ maxWidth: '30rem' }}>
-              L’assistant ne reçoit que votre score et les variables sous le seuil. Il ne voit pas vos données brutes et ne peut pas modifier votre note.
+              {t('L’assistant ne reçoit que votre score et les variables sous le seuil. Il ne voit pas vos données brutes et ne peut pas modifier votre note.')}
             </p>
             <SaveStatus state={save.state} modelName={last.output.model_name} at={last.at} />
           </div>

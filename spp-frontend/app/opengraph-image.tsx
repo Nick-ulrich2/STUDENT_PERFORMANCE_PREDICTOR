@@ -1,10 +1,13 @@
 import { ImageResponse } from 'next/og';
+import { getT } from '@/lib/i18n/server';
+import { formatNumber } from '@/lib/format';
 
 export const alt = 'SPP — Student Performance Predictor';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default async function OpengraphImage() {
+  const { locale, t } = await getT();
   return new ImageResponse(
     (
       <div
@@ -39,9 +42,9 @@ export default async function OpengraphImage() {
             SPP
           </div>
           <div style={{ display: 'flex', fontSize: 76, fontWeight: 700, color: '#F5EFE3', lineHeight: 1.04 }}>
-            Votre note de demain se prépare aujourd’hui.
+            {t('Votre note de demain se prépare aujourd’hui.')}
           </div>
-          <div style={{ display: 'flex', fontSize: 26, color: '#cfc7b3' }}>Estimation, jamais verdict.</div>
+          <div style={{ display: 'flex', fontSize: 26, color: '#cfc7b3' }}>{t('Estimation, jamais verdict.')}</div>
         </div>
         <div
           style={{
@@ -71,10 +74,10 @@ export default async function OpengraphImage() {
               fontWeight: 800,
             }}
           >
-            66,0
+            {formatNumber(66, 1, locale)}
           </div>
           <div style={{ display: 'flex', marginTop: 28, fontSize: 28, color: '#2457A6', fontWeight: 700, letterSpacing: 4 }}>
-            BON
+            {t('BON')}
           </div>
         </div>
       </div>

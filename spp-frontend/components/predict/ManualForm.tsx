@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Seg } from '@/components/ui/Seg';
 import { ThresholdList } from '@/components/predict/ThresholdList';
 import { FEATURES, LEVELS, LEVELS_FR } from '@/lib/features';
+import { useT } from '@/lib/i18n';
 import type { ResourceLevel, StudentInput } from '@/types/prediction';
 
 type NumericKey = 'Attendance' | 'Hours_Studied' | 'Previous_Scores' | 'Tutoring_Sessions';
@@ -17,6 +18,7 @@ type ManualFormProps = {
 };
 
 export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
+  const t = useT();
   const [numbers, setNumbers] = useState<Record<NumericKey, string>>({
     Attendance: String(initial.Attendance),
     Hours_Studied: String(initial.Hours_Studied),
@@ -33,14 +35,18 @@ export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
       const value = Number(raw);
       const integer = f.key === 'Tutoring_Sessions';
       if (raw.trim() === '' || Number.isNaN(value) || value < f.min! || value > f.max! || (integer && !Number.isInteger(value))) {
-        out[f.key as NumericKey] = `${f.label} : entre ${f.min} et ${f.max}${integer ? ' (entier)' : ''}.`;
+        out[f.key as NumericKey] = t(integer ? '{label} : entre {min} et {max} (entier).' : '{label} : entre {min} et {max}.', {
+          label: t(f.label),
+          min: f.min!,
+          max: f.max!,
+        });
       }
     }
     return out;
-  }, [numbers]);
+  }, [numbers, t]);
 
   const live = Object.fromEntries(NUMERIC.map((f) => [f.key, numbers[f.key as NumericKey] === '' ? null : Number(numbers[f.key as NumericKey])]));
-  const options = LEVELS.map((l) => ({ value: l, label: LEVELS_FR[l] }));
+  const options = LEVELS.map((l) => ({ value: l, label: t(LEVELS_FR[l]) }));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +66,8 @@ export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
       <div className="card">
         <div className="card-h">
           <div>
-            <h3 className="display">Vos 6 variables</h3>
-            <p>Chaque champ est borné. Les valeurs inconnues sont refusées.</p>
+            <h3 className="display">{t('Vos 6 variables')}</h3>
+            <p>{t('Chaque champ est borné. Les valeurs inconnues sont refusées.')}</p>
           </div>
         </div>
         {FEATURES.map((f) => {
@@ -73,11 +79,11 @@ export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
               <div className="pfield" key={f.key}>
                 <div className="top2">
                   <div className="nm">
-                    <Icon size={22} strokeWidth={1.8} aria-hidden="true" /> {f.label}
+                    <Icon size={22} strokeWidth={1.8} aria-hidden="true" /> {t(f.label)}
                   </div>
-                  <small className="muted tiny">{f.hint}</small>
+                  <small className="muted tiny">{t(f.hint)}</small>
                 </div>
-                <Seg value={value} options={options} onChange={set} label={f.label} />
+                <Seg value={value} options={options} onChange={set} label={t(f.label)} />
               </div>
             );
           }
@@ -88,9 +94,9 @@ export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
             <div className="pfield" key={f.key}>
               <div className="top2">
                 <div className="nm">
-                  <Icon size={22} strokeWidth={1.8} aria-hidden="true" /> {f.label}{' '}
+                  <Icon size={22} strokeWidth={1.8} aria-hidden="true" /> {t(f.label)}{' '}
                   <small>
-                    {f.min}–{f.max} {f.unit}
+                    {f.min}–{f.max} {f.unit ? t(f.unit) : ''}
                   </small>
                 </div>
                 <input
@@ -100,7 +106,7 @@ export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
                   max={f.max}
                   step={f.step}
                   value={raw}
-                  aria-label={f.label}
+                  aria-label={t(f.label)}
                   aria-invalid={Boolean(errors[key])}
                   onChange={(e) => setNumbers((n) => ({ ...n, [key]: e.target.value }))}
                 />
@@ -113,7 +119,7 @@ export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
                 step={f.step}
                 value={raw === '' ? f.min : Number(raw)}
                 style={{ '--p': `${pct}%` } as CSSProperties}
-                aria-label={`${f.label} (curseur)`}
+                aria-label={`${t(f.label)} (${t('curseur')})`}
                 onChange={(e) => setNumbers((n) => ({ ...n, [key]: e.target.value }))}
               />
               <div className="err-msg" aria-live="polite">
@@ -130,18 +136,18 @@ export function ManualForm({ initial, busy, onSubmit }: ManualFormProps) {
       <aside className="sticky-side stack" style={{ ['--s' as string]: '1rem' }}>
         <div className="card">
           <h3 className="display" style={{ fontSize: '1.25rem' }}>
-            Seuils recommandés
+            {t('Seuils recommandés')}
           </h3>
           <p className="muted tiny" style={{ marginBottom: '.6rem' }}>
-            Mis à jour en direct pendant votre saisie.
+            {t('Mis à jour en direct pendant votre saisie.')}
           </p>
           <ThresholdList values={live} />
         </div>
         <button className="btn block lg" type="submit" disabled={busy}>
-          Obtenir mon estimation <span className="ar" aria-hidden="true">→</span>
+          {t('Obtenir mon estimation')} <span className="ar" aria-hidden="true">→</span>
         </button>
         <p className="tiny muted" style={{ textAlign: 'center' }}>
-          Estimation indicative, sans valeur officielle.
+          {t('Estimation indicative, sans valeur officielle.')}
         </p>
       </aside>
     </form>

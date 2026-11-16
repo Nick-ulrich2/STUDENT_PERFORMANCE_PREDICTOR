@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Seg } from '@/components/ui/Seg';
 import { durationMs } from '@/lib/streak';
+import { useT } from '@/lib/i18n';
 import type { ActivityCorrectionPayload, ActivityRecord, AttendanceStatus } from '@/types/activity';
 
 const NOTE_MAX = 280;
@@ -16,6 +17,7 @@ type CorrectionModalProps = {
 };
 
 export function CorrectionModal({ activity, onClose, onSubmit }: CorrectionModalProps) {
+  const t = useT();
   const isAttendance = activity.activity_type === 'attendance';
   const [status, setStatus] = useState<AttendanceStatus>(activity.status === 'absent' ? 'absent' : 'present');
   const [minutes, setMinutes] = useState(String(Math.max(1, Math.round(durationMs(activity) / 60_000))));
@@ -27,14 +29,18 @@ export function CorrectionModal({ activity, onClose, onSubmit }: CorrectionModal
     e.preventDefault();
     const trimmed = note.trim();
     if (trimmed.length < 1 || trimmed.length > NOTE_MAX) {
-      return setError(trimmed.length ? `Le motif ne doit pas dépasser ${NOTE_MAX} caractères.` : `Le motif est obligatoire (1 à ${NOTE_MAX} caractères).`);
+      return setError(
+        trimmed.length
+          ? t('Le motif ne doit pas dépasser {max} caractères.', { max: NOTE_MAX })
+          : t('Le motif est obligatoire (1 à {max} caractères).', { max: NOTE_MAX }),
+      );
     }
     const payload: ActivityCorrectionPayload = { note: trimmed };
     if (isAttendance) {
       payload.status = status;
     } else {
       const mins = Number(minutes);
-      if (!Number.isFinite(mins) || mins < 1 || mins > 600) return setError('La durée doit être comprise entre 1 et 600 minutes.');
+      if (!Number.isFinite(mins) || mins < 1 || mins > 600) return setError(t('La durée doit être comprise entre 1 et 600 minutes.'));
       payload.ended_at = new Date(new Date(activity.started_at).getTime() + mins * 60_000).toISOString();
     }
     setError('');
@@ -45,30 +51,30 @@ export function CorrectionModal({ activity, onClose, onSubmit }: CorrectionModal
   };
 
   return (
-    <Modal title="Corriger cette entrée" description="L’entrée d’origine est conservée, avec votre motif." onClose={onClose}>
+    <Modal title={t('Corriger cette entrée')} description={t('L’entrée d’origine est conservée, avec votre motif.')} onClose={onClose}>
       <form className="stack" style={{ ['--s' as string]: '1rem' }} noValidate onSubmit={submit}>
         {isAttendance ? (
           <div className="field">
-            <span className="lbl">Statut correct</span>
+            <span className="lbl">{t('Statut correct')}</span>
             <Seg
               value={status}
               onChange={setStatus}
-              label="Statut correct"
+              label={t('Statut correct')}
               options={[
-                { value: 'present', label: 'Présent·e' },
-                { value: 'absent', label: 'Absent·e' },
+                { value: 'present', label: t('Présent·e') },
+                { value: 'absent', label: t('Absent·e') },
               ]}
             />
           </div>
         ) : (
           <div className="field">
-            <label htmlFor="correction-minutes">Durée correcte (minutes)</label>
+            <label htmlFor="correction-minutes">{t('Durée correcte (minutes)')}</label>
             <input id="correction-minutes" className="inp" type="number" min={1} max={600} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
           </div>
         )}
         <div className="field">
           <label htmlFor="correction-note">
-            Motif{' '}
+            {t('Motif')}{' '}
             <span className="hint" style={{ color: note.length > NOTE_MAX ? 'var(--risk)' : undefined }}>
               {note.length} / {NOTE_MAX}
             </span>
@@ -78,7 +84,7 @@ export function CorrectionModal({ activity, onClose, onSubmit }: CorrectionModal
             className={`inp${error ? ' err' : ''}`}
             rows={3}
             value={note}
-            placeholder="Pourquoi cette entrée était-elle erronée ?"
+            placeholder={t('Pourquoi cette entrée était-elle erronée ?')}
             aria-invalid={Boolean(error)}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -92,10 +98,10 @@ export function CorrectionModal({ activity, onClose, onSubmit }: CorrectionModal
         </div>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="btn ghost" onClick={onClose}>
-            Annuler
+            {t('Annuler')}
           </button>
           <button className="btn" type="submit" disabled={pending}>
-            Enregistrer la correction
+            {t('Enregistrer la correction')}
           </button>
         </div>
       </form>

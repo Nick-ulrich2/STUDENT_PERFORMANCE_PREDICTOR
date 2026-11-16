@@ -1,20 +1,24 @@
 import { FEATURES } from '@/lib/features';
 import { formatNumber } from '@/lib/format';
 import type { AggregatedFeatures } from '@/types/activity';
+import type { Locale } from '@/lib/i18n/core';
+import type { TFunction } from '@/lib/i18n';
 
 export type PriorityAction = { title: string; text: string; cta: string; href: string };
 
-const NEEDS_TRACKING: PriorityAction = {
-  title: 'Complétez votre suivi.',
-  text: 'Marquez votre présence et renseignez votre profil : SPP pourra alors calculer vos 6 variables sur 7 jours.',
-  cta: 'Ouvrir le suivi',
-  href: '/tracking',
-};
 
 // The single action the dashboard pushes: the measured variable furthest below
 // its recommended threshold, relative to that threshold.
-export function priorityAction(features: AggregatedFeatures | null): PriorityAction {
-  if (!features) return NEEDS_TRACKING;
+export function priorityAction(features: AggregatedFeatures | null, t: TFunction, locale: Locale): PriorityAction {
+  const n = (v: number, d = 0) => formatNumber(v, d, locale);
+  if (!features) {
+    return {
+      title: t('Complétez votre suivi.'),
+      text: t('Marquez votre présence et renseignez votre profil : SPP pourra alors calculer vos 6 variables sur 7 jours.'),
+      cta: t('Ouvrir le suivi'),
+      href: '/tracking',
+    };
+  }
 
   const gaps = FEATURES.filter((f) => f.threshold !== undefined)
     .map((f) => ({ f, value: features[f.key] as number }))
@@ -24,9 +28,9 @@ export function priorityAction(features: AggregatedFeatures | null): PriorityAct
 
   if (gaps.length === 0) {
     return {
-      title: 'Tout est au vert. Gardez le rythme.',
-      text: 'Vos quatre habitudes mesurées dépassent les seuils recommandés. Une nouvelle estimation confirmera la tendance.',
-      cta: 'Nouvelle estimation',
+      title: t('Tout est au vert. Gardez le rythme.'),
+      text: t('Vos quatre habitudes mesurées dépassent les seuils recommandés. Une nouvelle estimation confirmera la tendance.'),
+      cta: t('Nouvelle estimation'),
       href: '/predict',
     };
   }
@@ -35,30 +39,30 @@ export function priorityAction(features: AggregatedFeatures | null): PriorityAct
   switch (f.key) {
     case 'Attendance':
       return {
-        title: 'Soyez présent·e un jour de plus cette semaine.',
-        text: `Votre assiduité est à ${formatNumber(value)} %, sous le seuil de ${f.threshold} %. C’est la variable qui pèse le plus dans votre estimation.`,
-        cta: 'Marquer ma présence',
+        title: t('Soyez présent·e un jour de plus cette semaine.'),
+        text: t('Votre assiduité est à {value} %, sous le seuil de {threshold} %. C’est la variable qui pèse le plus dans votre estimation.', { value: n(value), threshold: f.threshold! }),
+        cta: t('Marquer ma présence'),
         href: '/tracking',
       };
     case 'Hours_Studied':
       return {
-        title: `Ajoutez ${Math.ceil(f.threshold! - value)} h d’étude cette semaine.`,
-        text: `Vous cumulez ${formatNumber(value, 1)} h sur 7 jours, sous le seuil de ${f.threshold} h. Deux séances de 45 min suffisent pour passer la barre.`,
-        cta: 'Lancer un chrono',
+        title: t('Ajoutez {hours} h d’étude cette semaine.', { hours: Math.ceil(f.threshold! - value) }),
+        text: t('Vous cumulez {value} h sur 7 jours, sous le seuil de {threshold} h. Deux séances de 45 min suffisent pour passer la barre.', { value: n(value, 1), threshold: f.threshold! }),
+        cta: t('Lancer un chrono'),
         href: '/tracking',
       };
     case 'Previous_Scores':
       return {
-        title: 'Reprenez un sujet de votre dernier examen.',
-        text: `Votre note précédente (${formatNumber(value)}) est sous ${f.threshold}. Repérez les chapitres où vous perdez le plus de points.`,
-        cta: 'Mettre à jour mon profil',
+        title: t('Reprenez un sujet de votre dernier examen.'),
+        text: t('Votre note précédente ({value}) est sous {threshold}. Repérez les chapitres où vous perdez le plus de points.', { value: n(value), threshold: f.threshold! }),
+        cta: t('Mettre à jour mon profil'),
         href: '/tracking',
       };
     default:
       return {
-        title: 'Réservez une séance de tutorat.',
-        text: `Vous en avez ${formatNumber(value)} sur 7 jours, sous le seuil de ${f.threshold}. Une séance de plus et vous passez au vert.`,
-        cta: 'Démarrer une séance',
+        title: t('Réservez une séance de tutorat.'),
+        text: t('Vous en avez {value} sur 7 jours, sous le seuil de {threshold}. Une séance de plus et vous passez au vert.', { value: n(value), threshold: f.threshold! }),
+        cta: t('Démarrer une séance'),
         href: '/tracking',
       };
   }

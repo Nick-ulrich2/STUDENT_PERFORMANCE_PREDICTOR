@@ -60,7 +60,9 @@ async function request<T>(
     return { ok: true, data: payload as T };
   } catch (err) {
     const detail =
-      err instanceof Error ? err.message : 'Network error. Please try again.';
+      err instanceof Error && !/failed to fetch|networkerror|load failed/i.test(err.message)
+        ? err.message
+        : 'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.';
     return { ok: false, error: { detail, status: 0 } satisfies ApiError };
   } finally {
     endTracking();
@@ -164,8 +166,11 @@ export const api = {
   getRecommendation(
     payload: RecommendationRequest,
     opts: RequestOptions,
+    lang: 'fr' | 'en' = 'fr',
   ): Promise<ApiResponse<RecommendationOutput>> {
-    return request<RecommendationOutput>('/predict/recommendation', {
+    // `lang` is a query parameter (not a body field): an older API that does not
+    // know it simply ignores it and answers in French.
+    return request<RecommendationOutput>(`/predict/recommendation?lang=${lang}`, {
       method: 'POST',
       body: JSON.stringify(payload),
       ...opts,

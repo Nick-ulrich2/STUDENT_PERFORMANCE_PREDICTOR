@@ -15,6 +15,7 @@ import { formatNumber, formatTime, relativeDay } from '@/lib/format';
 import { modelLabel, newestFirst } from '@/lib/predictions';
 import { scoreTone } from '@/lib/scoreTone';
 import type { PredictionRecord, ResourceLevel } from '@/types/prediction';
+import { useI18n } from '@/lib/i18n';
 
 const FIELD_OF: Record<FeatureKey, keyof PredictionRecord> = {
   Attendance: 'attendance',
@@ -26,18 +27,20 @@ const FIELD_OF: Record<FeatureKey, keyof PredictionRecord> = {
 };
 
 function VariableValue({ record, featureKey }: { record: PredictionRecord; featureKey: FeatureKey }) {
+  const { t, locale } = useI18n();
   const raw = record[FIELD_OF[featureKey]];
   const def = FEATURES.find((f) => f.key === featureKey)!;
-  if (def.categorical) return <>{LEVELS_FR[raw as ResourceLevel]}</>;
+  if (def.categorical) return <>{t(LEVELS_FR[raw as ResourceLevel])}</>;
   return (
     <>
-      {formatNumber(Number(raw), featureKey === 'Hours_Studied' ? 1 : 0)}
+      {formatNumber(Number(raw), featureKey === 'Hours_Studied' ? 1 : 0, locale)}
       {def.unit === '%' ? ' %' : ''}
     </>
   );
 }
 
 export default function HistoryPage() {
+  const { t, locale } = useI18n();
   const { token } = useAuth();
   const { records, loading, error } = usePredictionHistory(token);
   const [openId, setOpenId] = useState<number | null>(null);
@@ -49,7 +52,7 @@ export default function HistoryPage() {
     return (
       <div className="page">
         <div className="wrap">
-          <p className="muted">Chargement de votre historique…</p>
+          <p className="muted">{t('Chargement de votre historique…')}</p>
         </div>
       </div>
     );
@@ -58,14 +61,14 @@ export default function HistoryPage() {
   const header = (title: React.ReactNode, action = true) => (
     <div className="page-h">
       <div>
-        <span className="eyebrow">Historique</span>
+        <span className="eyebrow">{t('Historique')}</span>
         <h1 className="display" style={{ marginTop: '.7rem' }}>
           {title}
         </h1>
       </div>
       {action && (
         <Link className="btn" href="/predict">
-          Nouvelle estimation <ArrowRight className="ar" size={18} aria-hidden="true" />
+          {t('Nouvelle estimation')} <ArrowRight className="ar" size={18} aria-hidden="true" />
         </Link>
       )}
     </div>
@@ -75,9 +78,9 @@ export default function HistoryPage() {
     return (
       <div className="page">
         <div className="wrap">
-          {header('Votre historique.', false)}
-          <Banner tone="risk" title="Historique indisponible">
-            {error}
+          {header(t('Votre historique.'), false)}
+          <Banner tone="risk" title={t('Historique indisponible')}>
+            {t(error)}
           </Banner>
         </div>
       </div>
@@ -88,18 +91,18 @@ export default function HistoryPage() {
     return (
       <div className="page">
         <div className="wrap">
-          {header('Votre historique.', false)}
+          {header(t('Votre historique.'), false)}
           <div className="card empty">
             <svg viewBox="0 0 140 100" fill="none" stroke="var(--line-2)" strokeWidth="3" strokeLinecap="round" width="140" aria-hidden="true">
               <path d="M10 80h120M20 70l25-18 25 10 30-32 20 10" />
               <circle cx="115" cy="40" r="5" fill="var(--mark)" stroke="var(--ink)" />
             </svg>
-            <h3 className="display">Aucune estimation pour l’instant</h3>
+            <h3 className="display">{t('Aucune estimation pour l’instant')}</h3>
             <p className="muted" style={{ maxWidth: '26rem' }}>
-              Chaque estimation sera sauvegardée ici, avec sa date, son score et ses variables sous le seuil.
+              {t('Chaque estimation sera sauvegardée ici, avec sa date, son score et ses variables sous le seuil.')}
             </p>
             <Link className="btn" href="/predict">
-              Faire ma première estimation <ArrowRight className="ar" size={18} aria-hidden="true" />
+              {t('Faire ma première estimation')} <ArrowRight className="ar" size={18} aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -117,40 +120,40 @@ export default function HistoryPage() {
       <div className="wrap">
         {header(
           <>
-            Votre <Highlight>progression</Highlight>.
+            {t('Votre')} <Highlight>{t('progression')}</Highlight>.
           </>,
         )}
 
         <div className="kpis k3" style={{ marginBottom: '1.25rem' }}>
           <Reveal className="card kpi">
-            <small>Dernière</small>
+            <small>{t('Dernière')}</small>
             <b>
               <CountUp value={latest} decimals={1} />
             </b>
             <TierPill score={latest} />
           </Reveal>
           <Reveal className="card kpi" delay={0.07}>
-            <small>Meilleure</small>
+            <small>{t('Meilleure')}</small>
             <b>
               <CountUp value={best} decimals={1} />
             </b>
-            <span className="muted tiny">sur {scores.length} estimation{scores.length > 1 ? 's' : ''}</span>
+            <span className="muted tiny">{t(scores.length > 1 ? 'sur {count} estimations' : 'sur {count} estimation', { count: scores.length })}</span>
           </Reveal>
           <Reveal className="card kpi" delay={0.14}>
-            <small>Évolution</small>
+            <small>{t('Évolution')}</small>
             <b style={{ color: trend >= 0 ? 'var(--excellent)' : 'var(--risk)' }}>
               {trend >= 0 ? '+' : '−'}
-              {formatNumber(Math.abs(trend), 1)}
+              {formatNumber(Math.abs(trend), 1, locale)}
             </b>
-            <span className="muted tiny">points depuis la première</span>
+            <span className="muted tiny">{t('points depuis la première')}</span>
           </Reveal>
         </div>
 
         <Reveal as="article" className="card" style={{ marginBottom: '1.25rem' }}>
           <div className="card-h">
             <div>
-              <h3 className="display">Courbe des estimations</h3>
-              <p>Moyenne {formatNumber(average, 1)} · du plus ancien au plus récent</p>
+              <h3 className="display">{t('Courbe des estimations')}</h3>
+              <p>{t('Moyenne {avg} · du plus ancien au plus récent', { avg: formatNumber(average, 1, locale) })}</p>
             </div>
           </div>
           <Spark values={scores} height={110} />
@@ -169,14 +172,14 @@ export default function HistoryPage() {
                   onClick={() => setOpenId(open ? null : r.id)}
                 >
                   <span className="sc">
-                    {formatNumber(score, 1)}
+                    {formatNumber(score, 1, locale)}
                     <small>/100</small>
                   </span>
                   <span>
-                    <b>{relativeDay(r.created_at)}</b>
+                    <b>{relativeDay(r.created_at, locale)}</b>
                     <br />
                     <span className="muted tiny">
-                      {formatTime(r.created_at)} · modèle {modelLabel(r)}
+                      {formatTime(r.created_at, locale)} · {t('modèle {model}', { model: modelLabel(r) })}
                     </span>
                   </span>
                   <span className="pill-col row" style={{ ['--g' as string]: '.4rem' }}>
@@ -184,7 +187,7 @@ export default function HistoryPage() {
                     {r.below_threshold && r.below_threshold.length > 0 ? (
                       <BelowChips keys={r.below_threshold} />
                     ) : (
-                      <span className="pill excellent">Tout est au vert</span>
+                      <span className="pill excellent">{t('Tout est au vert')}</span>
                     )}
                   </span>
                 </button>
@@ -192,7 +195,7 @@ export default function HistoryPage() {
                   <div className="h-det">
                     {FEATURES.map((f) => (
                       <div key={f.key}>
-                        {f.label}
+                        {t(f.label)}
                         <b>
                           <VariableValue record={r} featureKey={f.key} />
                         </b>

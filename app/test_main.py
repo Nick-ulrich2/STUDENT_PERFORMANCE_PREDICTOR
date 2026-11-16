@@ -918,3 +918,28 @@ def test_recommendation_is_rate_limited_per_user(client, monkeypatch):
     assert statuses[10] == 429
     blocked = client.post("/predict/recommendation", json=_recommendation_payload(), headers=_headers())
     assert blocked.headers["Retry-After"].isdigit()
+
+
+def test_recommendation_language_defaults_to_french_and_accepts_english(client, monkeypatch):
+    seen = []
+    monkeypatch.setattr(
+        "app.main.generate_recommendation", lambda **kw: seen.append(kw["language"]) or "ok"
+    )
+    for suffix in ("", "?lang=en", "?lang=fr"):
+        response = client.post(
+            f"/predict/recommendation{suffix}", json=_recommendation_payload(), headers=_headers()
+        )
+        assert response.status_code == 200
+    assert seen == ["fr", "en", "fr"]
+    rejected = client.post(
+        "/predict/recommendation?lang=de", json=_recommendation_payload(), headers=_headers()
+    )
+    assert rejected.status_code == 422
+
+
+def test_english_recommendation_prompt_is_english():
+    from app.llm import SYSTEM_PROMPT_EN, _build_user_prompt_en
+
+    prompt = _build_user_prompt_en(61.5, {"Attendance": 0.8}, ["Attendance"])
+    assert "Predicted score: 61.5/100" in prompt and "below the recommended threshold" in prompt
+    assert "English only" in SYSTEM_PROMPT_EN

@@ -7,6 +7,7 @@ import { formatNumber } from '@/lib/format';
 import { previewScore } from '@/lib/model';
 import { scoreTone } from '@/lib/scoreTone';
 import { PenCircle } from '@/components/ui/PenCircle';
+import { useI18n } from '@/lib/i18n';
 
 const FIXED = {
   Previous_Scores: 70,
@@ -18,6 +19,7 @@ const FIXED = {
 // The only place a score is computed in the browser: a public, account-free
 // preview with two sliders. Real estimates always come from the API.
 export function HeroDemo() {
+  const { t, locale } = useI18n();
   const [hours, setHours] = useState(18);
   const [attendance, setAttendance] = useState(80);
   const [shown, setShown] = useState(0);
@@ -34,7 +36,7 @@ export function HeroDemo() {
     const first = firstRun.current;
     firstRun.current = false;
     const from = shownRef.current;
-    const t = tween(
+    const anim = tween(
       first ? 1400 : 260,
       (p) => {
         const v = from + (score - from) * p;
@@ -45,32 +47,32 @@ export function HeroDemo() {
     );
     const stampTimer = setTimeout(() => setStamped(true), first ? 1500 : 0);
     return () => {
-      t.cancel();
+      anim.cancel();
       clearTimeout(stampTimer);
     };
   }, [inView, score]);
 
   return (
     <div ref={ref} className={`demo-copie copie ${tone.className}`}>
-      <span className="sticker">Essayez</span>
+      <span className="sticker">{t('Essayez')}</span>
       <div className="mono tiny muted" style={{ letterSpacing: '.08em' }}>
-        COPIE D’APERÇU · 2 CURSEURS
+        {t('COPIE D’APERÇU · 2 CURSEURS')}
       </div>
       <div className="score-spot">
         <PenCircle delay={900} />
         <div className="num">
-          <span aria-live="polite" aria-atomic="true">{formatNumber(shown, 1)}</span>
+          <span aria-live="polite" aria-atomic="true">{formatNumber(shown, 1, locale)}</span>
           <small>/100</small>
         </div>
       </div>
       <div style={{ textAlign: 'center', minHeight: '2.6rem' }}>
-        <span className={`tier-stamp${stamped ? ' show' : ''}`}>{tone.label}</span>
+        <span className={`tier-stamp${stamped ? ' show' : ''}`}>{t(tone.label)}</span>
       </div>
       <div className="mini-ctl">
         <label>
           <div className="row">
-            <span>Heures d’étude / semaine</span>
-            <output>{hours} h</output>
+            <span>{t('Heures d’étude / semaine')}</span>
+            <output>{hours} {t('h')}</output>
           </div>
           <input
             className="range"
@@ -80,12 +82,12 @@ export function HeroDemo() {
             value={hours}
             style={{ '--p': `${(hours / 45) * 100}%` } as React.CSSProperties}
             onChange={(e) => setHours(Number(e.target.value))}
-            aria-label="Heures d’étude par semaine"
+            aria-label={t('Heures d’étude par semaine')}
           />
         </label>
         <label>
           <div className="row">
-            <span>Assiduité</span>
+            <span>{t('Assiduité')}</span>
             <output>{attendance} %</output>
           </div>
           <input
@@ -96,15 +98,15 @@ export function HeroDemo() {
             value={attendance}
             style={{ '--p': `${((attendance - 50) / 50) * 100}%` } as React.CSSProperties}
             onChange={(e) => setAttendance(Number(e.target.value))}
-            aria-label="Assiduité en pourcentage"
+            aria-label={t('Assiduité en pourcentage')}
           />
         </label>
       </div>
       <p className="tiny muted" style={{ marginTop: '.9rem' }}>
-        Aperçu pédagogique : les 4 autres variables sont fixées à une valeur moyenne. Le vrai calcul utilise vos 6 variables.
+        {t('Aperçu pédagogique : les 4 autres variables sont fixées à une valeur moyenne. Le vrai calcul utilise vos 6 variables.')}
       </p>
       <span className="margin-note" style={{ position: 'absolute', left: -12, bottom: -30, fontSize: '1.5rem' }}>
-        bouge les curseurs ↑
+        {t('bouge les curseurs ↑')}
       </span>
     </div>
   );

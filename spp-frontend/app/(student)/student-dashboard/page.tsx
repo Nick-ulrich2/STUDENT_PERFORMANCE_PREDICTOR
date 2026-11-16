@@ -19,10 +19,13 @@ import { firstNameFromEmail, formatNumber, relativeDay } from '@/lib/format';
 import { newestFirst, modelLabel } from '@/lib/predictions';
 import { priorityAction } from '@/lib/priority';
 import { buildHeatmap, computeStreak } from '@/lib/streak';
+import { useI18n } from '@/lib/i18n';
+import { intlLocale } from '@/lib/i18n/core';
 
 const WEEKS = 18;
 
 export default function StudentDashboardPage() {
+  const { t, locale } = useI18n();
   const { user, token } = useAuth();
   const history = usePredictionHistory(token);
   const features = useFeatures(token);
@@ -32,17 +35,17 @@ export default function StudentDashboardPage() {
   const last = records[0];
   const previous = records[1];
   const delta = last && previous ? Math.round((last.predicted_score - previous.predicted_score) * 10) / 10 : null;
-  const action = priorityAction(features.features);
+  const action = priorityAction(features.features, t, locale);
   const heat = useMemo(() => buildHeatmap(activities, WEEKS), [activities]);
 
   const streaks = [
-    { label: 'Étude', days: computeStreak(activities, (a) => a.activity_type === 'study_session') },
-    { label: 'Tutorat', days: computeStreak(activities, (a) => a.activity_type === 'tutoring_session') },
-    { label: 'Présence', days: computeStreak(activities, (a) => a.activity_type === 'attendance' && a.status === 'present') },
+    { label: t('Étude'), days: computeStreak(activities, (a) => a.activity_type === 'study_session') },
+    { label: t('Tutorat'), days: computeStreak(activities, (a) => a.activity_type === 'tutoring_session') },
+    { label: t('Présence'), days: computeStreak(activities, (a) => a.activity_type === 'attendance' && a.status === 'present') },
   ];
 
-  const name = user ? firstNameFromEmail(user.email) : '';
-  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const name = user ? firstNameFromEmail(user.email, locale) : '';
+  const today = new Date().toLocaleDateString(intlLocale(locale), { weekday: 'long', day: 'numeric', month: 'long' });
   const trackingIncomplete = features.errorStatus === 409;
 
   return (
@@ -52,32 +55,32 @@ export default function StudentDashboardPage() {
           <div>
             <span className="eyebrow">{today}</span>
             <h1 className="display" style={{ marginTop: '.7rem' }}>
-              Bonjour, {name}.<br />
-              <span className="muted" style={{ fontWeight: 400 }}>Voici où vous en êtes.</span>
+              {t('Bonjour, {name}.', { name })}<br />
+              <span className="muted" style={{ fontWeight: 400 }}>{t('Voici où vous en êtes.')}</span>
             </h1>
           </div>
           <Link className="btn" href="/predict">
-            Nouvelle estimation <ArrowRight className="ar" size={18} aria-hidden="true" />
+            {t('Nouvelle estimation')} <ArrowRight className="ar" size={18} aria-hidden="true" />
           </Link>
         </div>
 
         {history.error && (
-          <Banner tone="risk" title="Historique indisponible" className="err-banner-inline">
-            {history.error}
+          <Banner tone="risk" title={t('Historique indisponible')} className="err-banner-inline">
+            {t(history.error)}
           </Banner>
         )}
 
         <div className="dash">
           <Reveal as="article" className="card c7">
             {history.loading ? (
-              <p className="muted">Chargement de votre dernière estimation…</p>
+              <p className="muted">{t('Chargement de votre dernière estimation…')}</p>
             ) : last ? (
               <>
                 <div className="card-h">
                   <div>
-                    <h3 className="display">Votre dernière estimation</h3>
+                    <h3 className="display">{t('Votre dernière estimation')}</h3>
                     <p>
-                      {relativeDay(last.created_at)} · modèle {modelLabel(last)}
+                      {relativeDay(last.created_at, locale)} · {t('modèle {model}', { model: modelLabel(last) })}
                     </p>
                   </div>
                   <TierPill score={last.predicted_score} />
@@ -89,28 +92,28 @@ export default function StudentDashboardPage() {
                       <div>
                         <span className={`delta ${delta >= 0 ? 'up' : 'down'}`}>
                           {delta >= 0 ? '▲ +' : '▼ −'}
-                          {formatNumber(Math.abs(delta), 1)} pt
+                          {formatNumber(Math.abs(delta), 1, locale)} {t('pt')}
                         </span>{' '}
-                        <span className="muted tiny">depuis la précédente</span>
+                        <span className="muted tiny">{t('depuis la précédente')}</span>
                       </div>
                     )}
                     <p className="muted">
-                      Marge d’erreur typique de <b style={{ color: 'var(--ink)' }}>± 2 points</b>. Une estimation se lit comme un repère, pas comme un résultat garanti.
+                      {t('Marge d’erreur typique de')} <b style={{ color: 'var(--ink)' }}>{t('± 2 points')}</b>. {t('Une estimation se lit comme un repère, pas comme un résultat garanti.')}
                     </p>
                     <Link className="link" href="/history">
-                      Voir l’historique
+                      {t('Voir l’historique')}
                     </Link>
                   </div>
                 </div>
               </>
             ) : (
               <div className="empty" style={{ padding: '2rem 0' }}>
-                <h3 className="display">Aucune estimation pour l’instant</h3>
+                <h3 className="display">{t('Aucune estimation pour l’instant')}</h3>
                 <p className="muted" style={{ maxWidth: '26rem' }}>
-                  Faites votre première estimation : elle servira de point de départ à toute votre progression.
+                  {t('Faites votre première estimation : elle servira de point de départ à toute votre progression.')}
                 </p>
                 <Link className="btn" href="/predict">
-                  Estimer ma note <ArrowRight className="ar" size={18} aria-hidden="true" />
+                  {t('Estimer ma note')} <ArrowRight className="ar" size={18} aria-hidden="true" />
                 </Link>
               </div>
             )}
@@ -118,7 +121,7 @@ export default function StudentDashboardPage() {
 
           <Reveal as="article" className="card priority c5" delay={0.08}>
             <span className="pill tag">
-              <Target size={14} aria-hidden="true" /> Action prioritaire
+              <Target size={14} aria-hidden="true" /> {t('Action prioritaire')}
             </span>
             <h3 className="display">{action.title}</h3>
             <p>{action.text}</p>
@@ -130,30 +133,30 @@ export default function StudentDashboardPage() {
           <Reveal as="article" className="card c8">
             <div className="card-h">
               <div>
-                <h3 className="display">Cette semaine</h3>
-                <p>Vos 6 variables, agrégées sur 7 jours glissants. Le repère rouge marque le seuil recommandé.</p>
+                <h3 className="display">{t('Cette semaine')}</h3>
+                <p>{t('Vos 6 variables, agrégées sur 7 jours glissants. Le repère rouge marque le seuil recommandé.')}</p>
               </div>
               <Link className="link tiny" href="/tracking">
-                Détail
+                {t('Détail')}
               </Link>
             </div>
             {trackingIncomplete && (
               <Banner
                 tone="warn"
-                title="Suivi incomplet"
+                title={t('Suivi incomplet')}
                 className="err-banner-inline"
                 action={
                   <Link className="btn sm ghost" href="/tracking">
-                    Compléter
+                    {t('Compléter')}
                   </Link>
                 }
               >
-                Marquez votre présence au moins un jour et complétez votre profil.
+                {t('Marquez votre présence au moins un jour et complétez votre profil.')}
               </Banner>
             )}
             {features.error && !trackingIncomplete && (
-              <Banner tone="risk" title="Suivi indisponible" className="err-banner-inline">
-                {features.error}
+              <Banner tone="risk" title={t('Suivi indisponible')} className="err-banner-inline">
+                {t(features.error)}
               </Banner>
             )}
             <div className="tiles">
@@ -166,8 +169,8 @@ export default function StudentDashboardPage() {
           <Reveal as="article" className="card c4" delay={0.08}>
             <div className="card-h">
               <div>
-                <h3 className="display">Séries</h3>
-                <p>Jours consécutifs par activité.</p>
+                <h3 className="display">{t('Séries')}</h3>
+                <p>{t('Jours consécutifs par activité.')}</p>
               </div>
             </div>
             <div className="streaks">
@@ -179,11 +182,11 @@ export default function StudentDashboardPage() {
                   <div>
                     <div className="n">
                       <CountUp value={s.days} duration={800} />{' '}
-                      <span style={{ fontSize: '.9rem', fontFamily: 'var(--f-body)', fontWeight: 500 }}>jour{s.days > 1 ? 's' : ''}</span>
+                      <span style={{ fontSize: '.9rem', fontFamily: 'var(--f-body)', fontWeight: 500 }}>{s.days > 1 ? t('jours') : t('jour')}</span>
                     </div>
                     <div className="t">
                       {s.label}
-                      {s.days ? '' : ' · reprenez aujourd’hui'}
+                      {s.days ? '' : ` · ${t('reprenez aujourd’hui')}`}
                     </div>
                   </div>
                 </div>
@@ -194,11 +197,11 @@ export default function StudentDashboardPage() {
           <Reveal as="article" className="card c12">
             <div className="card-h">
               <div>
-                <h3 className="display">Carte de chaleur</h3>
-                <p>Vos {WEEKS * 7} derniers jours d’activité. Plus la case est foncée, plus la journée a été active.</p>
+                <h3 className="display">{t('Carte de chaleur')}</h3>
+                <p>{t('Vos {days} derniers jours d’activité. Plus la case est foncée, plus la journée a été active.', { days: WEEKS * 7 })}</p>
               </div>
             </div>
-            <Heatmap days={heat} weeks={WEEKS} label={`Carte de chaleur d’activité sur ${WEEKS} semaines`} />
+            <Heatmap days={heat} weeks={WEEKS} label={t('Carte de chaleur d’activité sur {weeks} semaines', { weeks: WEEKS })} />
           </Reveal>
         </div>
       </div>

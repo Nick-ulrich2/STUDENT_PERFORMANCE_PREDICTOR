@@ -3,6 +3,7 @@
 import { BookOpen, Play, Square, Users } from 'lucide-react';
 import { useNow } from '@/hooks/useNow';
 import { formatClock } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import type { ActivityRecord, TrackedActivityType } from '@/types/activity';
 
 const COPY = {
@@ -19,6 +20,7 @@ type TimerCardProps = {
 };
 
 export function TimerCard({ type, active, busy, onStart, onStop }: TimerCardProps) {
+  const t = useT();
   const copy = COPY[type];
   const running = active !== null;
   const now = useNow(1000, running);
@@ -28,16 +30,16 @@ export function TimerCard({ type, active, busy, onStart, onStop }: TimerCardProp
     <article className="card c6">
       <div className="card-h">
         <div>
-          <h3 className="display">{copy.title}</h3>
-          <p>{copy.hint} Une seule session ouverte par type.</p>
+          <h3 className="display">{t(copy.title)}</h3>
+          <p>{t(copy.hint)} {t('Une seule session ouverte par type.')}</p>
         </div>
         {running ? (
           <span className="pill risk">
             <i className="dot-live" />
-            En cours
+            {t('En cours')}
           </span>
         ) : (
-          <span className="pill">Prêt</span>
+          <span className="pill">{t('Prêt')}</span>
         )}
       </div>
       <div className="timer">
@@ -47,11 +49,11 @@ export function TimerCard({ type, active, busy, onStart, onStop }: TimerCardProp
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           {running ? (
             <button type="button" className="btn" disabled={busy} onClick={() => onStop(active)}>
-              <Square size={16} fill="currentColor" aria-hidden="true" /> Arrêter
+              <Square size={16} fill="currentColor" aria-hidden="true" /> {t('Arrêter')}
             </button>
           ) : (
             <button type="button" className="btn mark" disabled={busy} onClick={() => onStart(type)}>
-              <Play size={16} fill="currentColor" aria-hidden="true" /> Démarrer
+              <Play size={16} fill="currentColor" aria-hidden="true" /> {t('Démarrer')}
             </button>
           )}
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useT } from '@/lib/i18n';
 
 const WIDTHS = [92, 70, 58];
 
@@ -8,6 +9,7 @@ const WIDTHS = [92, 70, 58];
 // are decorative; the prediction itself is not slowed down by this animation.
 export function GradingOverlay() {
   const [go, setGo] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setGo(true));
@@ -18,7 +20,7 @@ export function GradingOverlay() {
     <div className="grading" role="status" aria-live="polite">
       <div className="copie sheet">
         <div className="mono tiny muted" style={{ letterSpacing: '.1em' }}>
-          CORRECTION EN COURS
+          {t('CORRECTION EN COURS')}
         </div>
         <div style={{ margin: '1.4rem 0 .6rem' }} aria-hidden="true">
           {WIDTHS.map((w, i) => (
@@ -33,7 +35,7 @@ export function GradingOverlay() {
             />
           ))}
         </div>
-        <p>Je corrige votre copie…</p>
+        <p>{t('Je corrige votre copie…')}</p>
       </div>
     </div>
   );

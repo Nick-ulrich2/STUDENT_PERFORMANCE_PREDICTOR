@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/lib/i18n';
 import { ForbiddenScreen } from '@/components/system/ErrorScreen';
 import { homeFor } from '@/components/layout/nav';
 import type { UserRole } from '@/types/auth';
@@ -18,6 +19,7 @@ export function Guard({ children, allow }: GuardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, isLoggingOut } = useAuth();
+  const t = useT();
 
   useEffect(() => {
     if (loading || user || isLoggingOut()) return;
@@ -28,7 +30,7 @@ export function Guard({ children, allow }: GuardProps) {
     return (
       <div className="loading-screen" role="status" aria-live="polite">
         <div className="spin" aria-hidden="true" />
-        <p>Chargement de votre session…</p>
+        <p>{t('Chargement de votre session…')}</p>
       </div>
     );
   }
@@ -51,6 +53,7 @@ export function GuestOnly({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
+  const t = useT();
   const next = safeNext(searchParams.get('next'));
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export function GuestOnly({ children }: { children: React.ReactNode }) {
     return (
       <div className="loading-screen" role="status" aria-live="polite">
         <div className="spin" aria-hidden="true" />
-        <p>Chargement…</p>
+        <p>{t('Chargement…')}</p>
       </div>
     );
   }

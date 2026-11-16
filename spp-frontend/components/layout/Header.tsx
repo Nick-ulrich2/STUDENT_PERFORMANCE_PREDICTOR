@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LogoMark } from '@/components/ui/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/Toast';
+import { useI18n } from '@/lib/i18n';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { firstNameFromEmail } from '@/lib/format';
 import { NAV, PUBLIC_LINKS, homeFor, isActive } from '@/components/layout/nav';
 
@@ -13,6 +15,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const toast = useToast();
+  const { t, locale } = useI18n();
   const { user, loading, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,16 +48,16 @@ export function Header() {
     setMenuOpen(false);
     await logout();
     router.replace('/');
-    toast('Vous êtes déconnecté·e. Votre jeton est effacé.');
+    toast(t('Vous êtes déconnecté·e. Votre jeton est effacé.'));
   };
 
-  const name = user ? firstNameFromEmail(user.email) : '';
+  const name = user ? firstNameFromEmail(user.email, locale) : '';
   const links = user ? NAV[user.role] : null;
 
   return (
     <header className={`top${scrolled ? ' scrolled' : ''}`}>
       <div className="wrap">
-        <Link className="logo" href={user ? homeFor(user.role) : '/'} aria-label="SPP, accueil">
+        <Link className="logo" href={user ? homeFor(user.role) : '/'} aria-label={t('SPP, accueil')}>
           <LogoMark />
           <span>
             SPP<small>Student Performance Predictor</small>
@@ -62,16 +65,16 @@ export function Header() {
         </Link>
 
         {!loading && (
-          <nav className="nav" aria-label="Navigation principale">
+          <nav className="nav" aria-label={t('Navigation principale')}>
             {links
               ? links.map((l) => (
                   <Link key={l.href} href={l.href} aria-current={isActive(pathname, l.href) ? 'page' : undefined}>
-                    {l.label}
+                    {t(l.label)}
                   </Link>
                 ))
               : PUBLIC_LINKS.map((l) => (
                   <Link key={l.href} href={l.href}>
-                    {l.label}
+                    {t(l.label)}
                   </Link>
                 ))}
           </nav>
@@ -79,13 +82,15 @@ export function Header() {
 
         <span className="sp" />
 
+        <LanguageSwitcher />
+
         {!loading && !user && (
           <>
             <Link className="btn ghost sm hide-m" href="/login">
-              Se connecter
+              {t('Se connecter')}
             </Link>
             <Link className="btn sm" href="/register">
-              Créer un compte
+              {t('Créer un compte')}
             </Link>
           </>
         )}
@@ -101,7 +106,7 @@ export function Header() {
             >
               <span className={`avatar ${user.role}`}>{name.charAt(0)}</span>
               <span className="nm">{name}</span>
-              <span className={`role-tag ${user.role}`}>{user.role === 'admin' ? 'admin' : 'étudiant'}</span>
+              <span className={`role-tag ${user.role}`}>{user.role === 'admin' ? t('admin') : t('étudiant')}</span>
             </button>
             {menuOpen && (
               <div className="pop" role="menu">
@@ -109,7 +114,7 @@ export function Header() {
                   {user.email}
                 </div>
                 <button type="button" role="menuitem" onClick={handleLogout}>
-                  Se déconnecter
+                  {t('Se déconnecter')}
                 </button>
               </div>
             )}

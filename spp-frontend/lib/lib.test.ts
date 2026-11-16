@@ -8,6 +8,9 @@ import { newestFirst } from '@/lib/predictions';
 import { isBelowThreshold, FEATURE_BY_KEY } from '@/lib/features';
 import type { ActivityRecord, AggregatedFeatures } from '@/types/activity';
 import type { PredictionRecord } from '@/types/prediction';
+import { translate } from '@/lib/i18n/core';
+
+const T = (key: string, vars?: Record<string, string | number>) => translate('fr', key, vars);
 
 afterEach(() => vi.useRealTimers());
 
@@ -75,20 +78,20 @@ describe('previewScore (landing demo)', () => {
 
 describe('priorityAction', () => {
   it('asks to complete the tracking when features are unavailable', () => {
-    expect(priorityAction(null).href).toBe('/tracking');
+    expect(priorityAction(null, T, 'fr').href).toBe('/tracking');
   });
 
   it('says everything is fine when no threshold is missed', () => {
-    expect(priorityAction(features()).title).toMatch(/au vert/);
+    expect(priorityAction(features(), T, 'fr').title).toMatch(/au vert/);
   });
 
   it('targets the variable furthest below its threshold', () => {
-    const action = priorityAction(features({ Attendance: 30, Tutoring_Sessions: 1 }));
+    const action = priorityAction(features({ Attendance: 30, Tutoring_Sessions: 1 }), T, 'fr');
     expect(action.title).toMatch(/présent/i);
   });
 
   it('suggests tutoring when it is the only gap', () => {
-    expect(priorityAction(features({ Tutoring_Sessions: 0 })).cta).toMatch(/séance/i);
+    expect(priorityAction(features({ Tutoring_Sessions: 0 }), T, 'fr').cta).toMatch(/séance/i);
   });
 });
 

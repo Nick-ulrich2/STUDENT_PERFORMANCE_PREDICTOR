@@ -9,6 +9,7 @@ import { Banner } from '@/components/ui/Banner';
 import { Highlight } from '@/components/ui/Reveal';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/lib/i18n';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useProfileAttributes } from '@/hooks/useProfileAttributes';
 import { api } from '@/lib/api';
@@ -23,6 +24,7 @@ const GRADING_MS = 1300;
 function PredictView() {
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
   const { token } = useAuth();
   const [mode, setMode] = useState<Mode>(useSearchParams().get('mode') === 'activity' ? 'activity' : 'manual');
   const [grading, setGrading] = useState(false);
@@ -37,7 +39,7 @@ function PredictView() {
     setGrading(false);
     if (!response.ok) {
       setError(response.error.detail);
-      toast('L’estimation n’a pas pu être calculée.', { error: true });
+      toast(t('L’estimation n’a pas pu être calculée.'), { error: true });
       return;
     }
     saveLastPrediction({ output: response.data, vars, at: Date.now() });
@@ -74,31 +76,31 @@ function PredictView() {
       <div className="wrap">
         <div className="page-h">
           <div>
-            <span className="eyebrow">Prédiction</span>
+            <span className="eyebrow">{t('Prédiction')}</span>
             <h1 className="display" style={{ marginTop: '.7rem' }}>
-              Estimez <Highlight>votre note</Highlight>.
+              {t('Estimez')} <Highlight>{t('votre note')}</Highlight>.
             </h1>
           </div>
         </div>
 
-        <div className="tabs" role="tablist" aria-label="Source des données">
+        <div className="tabs" role="tablist" aria-label={t('Source des données')}>
           <button type="button" role="tab" aria-selected={mode === 'manual'} onClick={() => setMode('manual')}>
-            Saisie manuelle
+            {t('Saisie manuelle')}
           </button>
           <button type="button" role="tab" aria-selected={mode === 'activity'} onClick={() => setMode('activity')}>
-            Depuis mon activité
+            {t('Depuis mon activité')}
           </button>
         </div>
 
         {error && (
-          <Banner tone="risk" title="Estimation impossible" className="err-banner-inline">
-            {error}
+          <Banner tone="risk" title={t('Estimation impossible')} className="err-banner-inline">
+            {t(error)}
           </Banner>
         )}
 
         {mode === 'manual' ? (
           profile.loading ? (
-            <p className="muted">Chargement…</p>
+            <p className="muted">{t('Chargement…')}</p>
           ) : (
             <ManualForm initial={initial} busy={grading} onSubmit={predictManual} />
           )

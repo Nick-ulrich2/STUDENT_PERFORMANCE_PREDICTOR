@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 type PasswordFieldProps = {
   id: string;
@@ -15,6 +16,7 @@ type PasswordFieldProps = {
 
 export function PasswordField({ id, label, value, onChange, autoComplete, error, extra }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
+  const t = useT();
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
@@ -32,7 +34,7 @@ export function PasswordField({ id, label, value, onChange, autoComplete, error,
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-pressed={visible}
-          aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+          aria-label={visible ? t('Masquer le mot de passe') : t('Afficher le mot de passe')}
         >
           {visible ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
         </button>

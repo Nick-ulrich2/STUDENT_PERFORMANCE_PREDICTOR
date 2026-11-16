@@ -1,6 +1,7 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+from typing import Literal
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -453,7 +454,9 @@ def predict_from_activity(window_days: int = 7, current_user: CurrentUser = Depe
 # influences predicted_score — ML predicts, LLM explains, never the reverse.
 @app.post("/predict/recommendation", response_model=RecommendationOutput)
 def get_recommendation(
-    data: RecommendationRequest, current_user: CurrentUser = Depends(require_user)
+    data: RecommendationRequest,
+    lang: Literal["fr", "en"] = "fr",
+    current_user: CurrentUser = Depends(require_user),
 ):
     recommendation_limiter.check(current_user["id"])
     try:
@@ -461,6 +464,7 @@ def get_recommendation(
             predicted_score=data.predicted_score,
             top_features=data.top_features,
             below_threshold=data.below_threshold,
+            language=lang,
         )
     except RecommendationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

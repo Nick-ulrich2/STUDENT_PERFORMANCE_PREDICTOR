@@ -9,6 +9,7 @@ import { useAdminUsers } from '@/hooks/useAdmin';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate, relativeDay } from '@/lib/format';
 import type { UserRole, UserSummary } from '@/types/auth';
+import { useI18n } from '@/lib/i18n';
 
 type RowProps = {
   user: UserSummary;
@@ -21,42 +22,43 @@ type RowProps = {
 };
 
 function UserRow({ user, isSelf, confirming, busy, onAsk, onCancel, onConfirm }: RowProps) {
+  const { t, locale } = useI18n();
   const admin = user.role === 'admin';
   return (
     <tr>
-      <td data-l="E-mail" className="em">
+      <td data-l={t('E-mail')} className="em">
         <span>
-          {user.email ?? '—'} {isSelf && <span className="pill ink">Vous</span>}
+          {user.email ?? '—'} {isSelf && <span className="pill ink">{t('Vous')}</span>}
         </span>
       </td>
-      <td data-l="Rôle">
-        <span className={`role-tag${admin ? ' admin' : ''}`}>{user.role}</span>
+      <td data-l={t('Rôle')}>
+        <span className={`role-tag${admin ? ' admin' : ''}`}>{admin ? t('admin') : t('étudiant')}</span>
       </td>
-      <td data-l="Créé le">{user.created_at ? formatDate(user.created_at) : '—'}</td>
-      <td data-l="Dernière connexion">{user.last_sign_in_at ? relativeDay(user.last_sign_in_at) : 'Jamais'}</td>
-      <td data-l="E-mail confirmé">
-        {user.email_confirmed_at ? <span className="pill excellent">Confirmé</span> : <span className="pill warn">En attente</span>}
+      <td data-l={t('Créé le')}>{user.created_at ? formatDate(user.created_at, locale) : '—'}</td>
+      <td data-l={t('Dernière connexion')}>{user.last_sign_in_at ? relativeDay(user.last_sign_in_at, locale) : t('Jamais')}</td>
+      <td data-l={t('E-mail confirmé')}>
+        {user.email_confirmed_at ? <span className="pill excellent">{t('Confirmé')}</span> : <span className="pill warn">{t('En attente')}</span>}
       </td>
-      <td data-l="Action" style={{ textAlign: 'right' }}>
+      <td data-l={t('Action')} style={{ textAlign: 'right' }}>
         {isSelf ? (
-          <span className="tip" data-tip="Vous ne pouvez pas modifier votre propre rôle">
+          <span className="tip" data-tip={t('Vous ne pouvez pas modifier votre propre rôle')}>
             <button type="button" className="btn ghost sm is-disabled" disabled aria-disabled="true">
-              Vous
+              {t('Vous')}
             </button>
           </span>
         ) : confirming ? (
-          <span className="confirm" role="alertdialog" aria-label="Confirmer le changement de rôle">
-            {admin ? 'Rétrograder' : 'Promouvoir'} ?
+          <span className="confirm" role="alertdialog" aria-label={t('Confirmer le changement de rôle')}>
+            {admin ? t('Rétrograder') : t('Promouvoir')} ?
             <button type="button" className="y" disabled={busy} onClick={onConfirm}>
-              Confirmer
+              {t('Confirmer')}
             </button>
             <button type="button" className="n" onClick={onCancel}>
-              Annuler
+              {t('Annuler')}
             </button>
           </span>
         ) : (
           <button type="button" className="btn ghost sm" disabled={busy} onClick={onAsk}>
-            {admin ? 'Rétrograder' : 'Promouvoir admin'}
+            {admin ? t('Rétrograder') : t('Promouvoir admin')}
           </button>
         )}
       </td>
@@ -65,6 +67,7 @@ function UserRow({ user, isSelf, confirming, busy, onAsk, onCancel, onConfirm }:
 }
 
 export default function AdminUsersPage() {
+  const { t } = useI18n();
   const { user: me, token } = useAuth();
   const toast = useToast();
   const { users, loading, error, actionError, updatingId, setRole } = useAdminUsers(token);
@@ -80,8 +83,8 @@ export default function AdminUsersPage() {
     const next: UserRole = target.role === 'admin' ? 'student' : 'admin';
     setConfirmId(null);
     const ok = await setRole(target.id, next);
-    if (ok) toast(`${target.email} est maintenant ${next === 'admin' ? 'administrateur' : 'étudiant'}.`);
-    else toast('Le rôle n’a pas pu être modifié.', { error: true });
+    if (ok) toast(t('{email} est maintenant {role}.', { email: target.email ?? '', role: next === 'admin' ? t('administrateur') : t('étudiant') }));
+    else toast(t('Le rôle n’a pas pu être modifié.'), { error: true });
   };
 
   return (
@@ -89,16 +92,16 @@ export default function AdminUsersPage() {
       <div className="wrap">
         <div className="page-h">
           <div>
-            <span className="eyebrow">Comptes</span>
+            <span className="eyebrow">{t('Comptes')}</span>
             <h1 className="display" style={{ marginTop: '.7rem' }}>
-              Les <Highlight>utilisateurs</Highlight>.
+              {t('Les')} <Highlight>{t('utilisateurs')}</Highlight>.
             </h1>
           </div>
         </div>
 
         {(error || actionError) && (
-          <Banner tone="risk" title="Action impossible" className="err-banner-inline">
-            {actionError ?? error}
+          <Banner tone="risk" title={t('Action impossible')} className="err-banner-inline">
+            {t(actionError ?? error ?? '')}
           </Banner>
         )}
 
@@ -111,26 +114,26 @@ export default function AdminUsersPage() {
               <input
                 className="inp"
                 type="search"
-                placeholder="Rechercher par e-mail"
-                aria-label="Rechercher par e-mail"
+                placeholder={t('Rechercher par e-mail')}
+                aria-label={t('Rechercher par e-mail')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <span className="tiny muted">{users.length} comptes · le rôle s’écrit uniquement côté serveur</span>
+            <span className="tiny muted">{t('{count} comptes · le rôle s’écrit uniquement côté serveur', { count: users.length })}</span>
           </div>
           {loading ? (
-            <p className="muted">Chargement des comptes…</p>
+            <p className="muted">{t('Chargement des comptes…')}</p>
           ) : (
             <div className="tbl-wrap">
               <table className="tbl cards">
                 <thead>
                   <tr>
-                    <th>E-mail</th>
-                    <th>Rôle</th>
-                    <th>Créé le</th>
-                    <th>Dernière connexion</th>
-                    <th>E-mail confirmé</th>
+                    <th>{t('E-mail')}</th>
+                    <th>{t('Rôle')}</th>
+                    <th>{t('Créé le')}</th>
+                    <th>{t('Dernière connexion')}</th>
+                    <th>{t('E-mail confirmé')}</th>
                     <th />
                   </tr>
                 </thead>
@@ -138,7 +141,7 @@ export default function AdminUsersPage() {
                   {shown.length === 0 && (
                     <tr>
                       <td colSpan={6} className="muted" style={{ textAlign: 'center', padding: '2.4rem' }}>
-                        Aucun utilisateur ne correspond à « {query} ».
+                        {t('Aucun utilisateur ne correspond à « {query} ».', { query })}
                       </td>
                     </tr>
                   )}

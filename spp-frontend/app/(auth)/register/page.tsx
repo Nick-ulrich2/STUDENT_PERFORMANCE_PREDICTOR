@@ -9,9 +9,10 @@ import { PasswordField } from '@/components/ui/PasswordField';
 import { Banner } from '@/components/ui/Banner';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/Toast';
+import { useT } from '@/lib/i18n';
 
 const METER_COLORS = ['#A92A2A', '#9A4A03', '#2457A6', '#17684A'];
-const METER_LABELS = ['', 'Faible', 'Correct', 'Solide', 'Excellent'];
+const METER_LABELS = ['', 'Fragile', 'Correct', 'Solide', 'Excellent'];
 
 function passwordStrength(value: string): number {
   return [
@@ -25,6 +26,7 @@ function passwordStrength(value: string): number {
 export default function RegisterPage() {
   const { register } = useAuth();
   const toast = useToast();
+  const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -40,8 +42,8 @@ export default function RegisterPage() {
     e.preventDefault();
     const emailOk = EMAIL_PATTERN.test(email.trim());
     const passwordOk = password.length >= 8;
-    setEmailError(emailOk ? '' : 'Saisissez une adresse e-mail valide.');
-    setPasswordError(passwordOk ? '' : 'Le mot de passe doit contenir au moins 8 caractères.');
+    setEmailError(emailOk ? '' : t('Saisissez une adresse e-mail valide.'));
+    setPasswordError(passwordOk ? '' : t('Le mot de passe doit contenir au moins 8 caractères.'));
     setFormError('');
     if (!emailOk || !passwordOk) return setShake(true);
 
@@ -56,7 +58,7 @@ export default function RegisterPage() {
       setConfirmSentTo(email.trim());
       return;
     }
-    toast('Compte créé. Bienvenue !');
+    toast(t('Compte créé. Bienvenue !'));
   };
 
   return (
@@ -68,33 +70,33 @@ export default function RegisterPage() {
               <Mail size={34} aria-hidden="true" />
             </div>
             <h1 className="display" style={{ fontSize: '2.4rem' }}>
-              Vérifiez votre boîte mail.
+              {t('Vérifiez votre boîte mail.')}
             </h1>
             <p className="muted">
-              Nous avons envoyé un lien de confirmation à <b style={{ color: 'var(--ink)' }}>{confirmSentTo}</b>. Votre compte est créé avec le rôle{' '}
-              <b style={{ color: 'var(--ink)' }}>Étudiant</b>.
+              {t('Nous avons envoyé un lien de confirmation à')} <b style={{ color: 'var(--ink)' }}>{confirmSentTo}</b>. {t('Votre compte est créé avec le rôle')}{' '}
+              <b style={{ color: 'var(--ink)' }}>{t('Étudiant')}</b>.
             </p>
             <Link className="btn" href="/login">
-              Aller à la connexion <ArrowRight className="ar" size={18} aria-hidden="true" />
+              {t('Aller à la connexion')} <ArrowRight className="ar" size={18} aria-hidden="true" />
             </Link>
           </div>
         ) : (
           <form noValidate onSubmit={onSubmit} className={shake ? 'shake' : ''} onAnimationEnd={() => setShake(false)}>
             <div>
-              <span className="eyebrow">Inscription</span>
+              <span className="eyebrow">{t('Inscription')}</span>
               <h1 className="display" style={{ fontSize: '2.8rem', marginTop: '.8rem' }}>
-                Créez votre espace.
+                {t('Créez votre espace.')}
               </h1>
             </div>
             {formError && (
-              <Banner tone="risk" title="Inscription impossible">
+              <Banner tone="risk" title={t('Inscription impossible')}>
                 {formError}
               </Banner>
             )}
             <EmailField id="register-email" value={email} onChange={setEmail} error={emailError} />
             <PasswordField
               id="register-password"
-              label="Mot de passe"
+              label={t('Mot de passe')}
               value={password}
               onChange={setPassword}
               autoComplete="new-password"
@@ -107,7 +109,7 @@ export default function RegisterPage() {
                     ))}
                   </div>
                   <span className="hint tiny muted">
-                    {password.length < 8 ? 'Au moins 8 caractères.' : METER_LABELS[strength]}
+                    {password.length < 8 ? t('Au moins 8 caractères.') : t(METER_LABELS[strength] ?? '')}
                   </span>
                 </>
               }
@@ -117,31 +119,31 @@ export default function RegisterPage() {
                 <User size={18} aria-hidden="true" />
               </span>
               <div className="tiny">
-                Votre compte sera créé avec le rôle <b>Étudiant</b>. Les droits d’administration ne se demandent pas.
+                {t('Votre compte sera créé avec le rôle')} <b>{t('Étudiant')}</b>. {t('Les droits d’administration ne se demandent pas.')}
               </div>
             </div>
             <button className="btn" type="submit" disabled={pending}>
               {pending ? (
                 <>
-                  <span className="spin" /> Création…
+                  <span className="spin" /> {t('Création…')}
                 </>
               ) : (
                 <>
-                  Créer mon compte <ArrowRight className="ar" size={18} aria-hidden="true" />
+                  {t('Créer mon compte')} <ArrowRight className="ar" size={18} aria-hidden="true" />
                 </>
               )}
             </button>
             <p className="muted" style={{ textAlign: 'center', fontSize: '.92rem' }}>
-              Déjà inscrit·e ?{' '}
+              {t('Déjà inscrit·e ?')}{' '}
               <Link className="link" href="/login">
-                Se connecter
+                {t('Se connecter')}
               </Link>
             </p>
           </form>
         )}
       </div>
       <AuthSide>
-        Vos habitudes sont déjà là. <em>Il ne reste qu’à les lire</em>.
+        {t('Vos habitudes sont déjà là.')} <em>{t('Il ne reste qu’à les lire')}</em>.
       </AuthSide>
     </div>
   );

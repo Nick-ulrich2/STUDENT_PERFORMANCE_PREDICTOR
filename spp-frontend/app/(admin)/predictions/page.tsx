@@ -10,8 +10,10 @@ import { Highlight } from '@/components/ui/Reveal';
 import { useAdminPredictions, useAdminUsers } from '@/hooks/useAdmin';
 import { useAuth } from '@/hooks/useAuth';
 import { newestFirst } from '@/lib/predictions';
+import { useI18n } from '@/lib/i18n';
 
 export default function AdminPredictionsPage() {
+  const { t } = useI18n();
   const { token } = useAuth();
   const predictions = useAdminPredictions(token);
   const users = useAdminUsers(token);
@@ -32,17 +34,17 @@ export default function AdminPredictionsPage() {
       <div className="wrap">
         <div className="page-h">
           <div>
-            <span className="eyebrow">Prédictions</span>
+            <span className="eyebrow">{t('Prédictions')}</span>
             <h1 className="display" style={{ marginTop: '.7rem' }}>
-              Toutes les <Highlight>prédictions</Highlight>.
+              {t('Toutes les')} <Highlight>{t('prédictions')}</Highlight>.
             </h1>
           </div>
           <ExportButton records={shown} emailOf={emailOf} />
         </div>
 
         {error && (
-          <Banner tone="risk" title="Données indisponibles" className="err-banner-inline">
-            {error}
+          <Banner tone="risk" title={t('Données indisponibles')} className="err-banner-inline">
+            {t(error)}
           </Banner>
         )}
 
@@ -55,23 +57,27 @@ export default function AdminPredictionsPage() {
               <input
                 className="inp"
                 type="search"
-                placeholder="Filtrer par e-mail"
-                aria-label="Filtrer par e-mail"
+                placeholder={t('Filtrer par e-mail')}
+                aria-label={t('Filtrer par e-mail')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
             <span className="tiny muted">
-              {loading ? 'Chargement…' : query ? `${shown.length} prédictions affichées` : `${all.length} prédictions · du plus récent au plus ancien`}
+              {loading
+                ? t('Chargement…')
+                : query
+                  ? t('{count} prédictions affichées', { count: shown.length })
+                  : t('{count} prédictions · du plus récent au plus ancien', { count: all.length })}
             </span>
           </div>
           {loading ? (
-            <p className="muted">Chargement…</p>
+            <p className="muted">{t('Chargement…')}</p>
           ) : (
-            <PredictionsTable records={shown} emailOf={emailOf} emptyText="Aucune prédiction pour cet e-mail." />
+            <PredictionsTable records={shown} emailOf={emailOf} emptyText={t('Aucune prédiction pour cet e-mail.')} />
           )}
           <p className="tiny muted" style={{ marginTop: '1rem' }}>
-            Pagination prévue en version 1.1 : cette vue charge pour l’instant toutes les lignes.
+            {t('Pagination prévue en version 1.1 : cette vue charge pour l’instant toutes les lignes.')}
           </p>
         </article>
       </div>

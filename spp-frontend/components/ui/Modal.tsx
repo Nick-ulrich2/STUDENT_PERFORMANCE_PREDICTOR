@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 type ModalProps = { title: string; description?: string; onClose: () => void; children: ReactNode };
 
 export function Modal({ title, description, onClose, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const t = useT();
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -34,7 +36,7 @@ export function Modal({ title, description, onClose, children }: ModalProps) {
             <h3 className="display">{title}</h3>
             {description && <p>{description}</p>}
           </div>
-          <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Fermer">
+          <button type="button" className="btn ghost sm" onClick={onClose} aria-label={t('Fermer')}>
             <X size={16} aria-hidden="true" />
           </button>
         </div>

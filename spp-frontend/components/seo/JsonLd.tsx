@@ -1,20 +1,22 @@
 import { faqs } from '@/data/faqs';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
+import { getT } from '@/lib/i18n/server';
 
 // Two schema.org types on the homepage: WebApplication (so Google can show
 // it as a tool/app rather than a generic article) and FAQPage, built from
 // the same data/faqs.ts content already rendered on the page — never
 // duplicated or invented, just the real FAQ marked up for rich results.
-export function JsonLd() {
+export async function JsonLd() {
+  const { locale, t } = await getT();
   const webApplication = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: SITE_NAME,
     url: SITE_URL,
-    description: SITE_DESCRIPTION,
+    description: t(SITE_DESCRIPTION),
     applicationCategory: 'EducationApplication',
     operatingSystem: 'Web',
-    inLanguage: 'fr-FR',
+    inLanguage: locale === 'en' ? 'en-GB' : 'fr-FR',
     offers: {
       '@type': 'Offer',
       price: '0',
@@ -27,10 +29,10 @@ export function JsonLd() {
     '@type': 'FAQPage',
     mainEntity: faqs.map(([question, answer]) => ({
       '@type': 'Question',
-      name: question,
+      name: t(question),
       acceptedAnswer: {
         '@type': 'Answer',
-        text: answer,
+        text: t(answer),
       },
     })),
   };

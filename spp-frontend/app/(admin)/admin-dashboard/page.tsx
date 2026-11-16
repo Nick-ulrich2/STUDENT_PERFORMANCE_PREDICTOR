@@ -14,23 +14,25 @@ import { useInView } from '@/hooks/useInView';
 import { firstNameFromEmail } from '@/lib/format';
 import { newestFirst } from '@/lib/predictions';
 import { TONE_VARS, scoreTone, type ScoreTone } from '@/lib/scoreTone';
+import { useI18n } from '@/lib/i18n';
 
-const TIERS: { tone: ScoreTone; label: string; legend: string }[] = [
-  { tone: 'excellent', label: 'Excellent', legend: 'Excellent ≥ 80' },
-  { tone: 'good', label: 'Bon', legend: 'Bon ≥ 65' },
-  { tone: 'warning', label: 'À renforcer', legend: 'À renforcer ≥ 50' },
-  { tone: 'risk', label: 'Risque', legend: 'Risque < 50' },
+const TIERS: { tone: ScoreTone; label: string; bound: string }[] = [
+  { tone: 'excellent', label: 'Excellent', bound: '≥ 80' },
+  { tone: 'good', label: 'Bon', bound: '≥ 65' },
+  { tone: 'warning', label: 'À renforcer', bound: '≥ 50' },
+  { tone: 'risk', label: 'Risque', bound: '< 50' },
 ];
 
 const WEEK_MS = 7 * 86_400_000;
 
 function Distribution({ counts, total }: { counts: Record<ScoreTone, number>; total: number }) {
   const [ref, inView] = useInView<HTMLDivElement>(0.3);
+  const { t } = useI18n();
   return (
-    <div ref={ref} className="dist" role="img" aria-label="Répartition par palier">
-      {TIERS.filter((t) => counts[t.tone] > 0).map((t) => (
-        <i key={t.tone} title={t.label} style={{ flex: inView ? counts[t.tone] : 0, background: TONE_VARS[t.tone] }}>
-          {Math.round((counts[t.tone] / total) * 100)} %
+    <div ref={ref} className="dist" role="img" aria-label={t('Répartition par palier')}>
+      {TIERS.filter((tier) => counts[tier.tone] > 0).map((tier) => (
+        <i key={tier.tone} title={t(tier.label)} style={{ flex: inView ? counts[tier.tone] : 0, background: TONE_VARS[tier.tone] }}>
+          {Math.round((counts[tier.tone] / total) * 100)} %
         </i>
       ))}
     </div>
@@ -38,6 +40,7 @@ function Distribution({ counts, total }: { counts: Record<ScoreTone, number>; to
 }
 
 export default function AdminDashboardPage() {
+  const { t, locale } = useI18n();
   const { user, token } = useAuth();
   const predictions = useAdminPredictions(token);
   const users = useAdminUsers(token);
@@ -59,13 +62,13 @@ export default function AdminDashboardPage() {
   const students = users.users.filter((u) => u.role === 'student').length;
   const loading = predictions.loading || users.loading;
   const error = predictions.error ?? users.error;
-  const name = user ? firstNameFromEmail(user.email) : '';
+  const name = user ? firstNameFromEmail(user.email, locale) : '';
 
   const kpis = [
-    { label: 'Étudiants', value: students, decimals: 0, caption: 'comptes étudiants' },
-    { label: 'Prédictions', value: records.length, decimals: 0, caption: 'au total' },
-    { label: 'Score moyen', value: stats.average, decimals: 1, caption: 'sur 100' },
-    { label: 'Cette semaine', value: stats.week, decimals: 0, caption: 'prédictions sur 7 jours' },
+    { label: t('Étudiants'), value: students, decimals: 0, caption: t('comptes étudiants') },
+    { label: t('Prédictions'), value: records.length, decimals: 0, caption: t('au total') },
+    { label: t('Score moyen'), value: stats.average, decimals: 1, caption: t('sur 100') },
+    { label: t('Cette semaine'), value: stats.week, decimals: 0, caption: t('prédictions sur 7 jours') },
   ];
 
   return (
@@ -73,23 +76,23 @@ export default function AdminDashboardPage() {
       <div className="wrap">
         <div className="page-h">
           <div>
-            <span className="eyebrow">Administration</span>
+            <span className="eyebrow">{t('Administration')}</span>
             <h1 className="display" style={{ marginTop: '.7rem' }}>
-              Bonjour, {name}.<br />
-              <span className="muted" style={{ fontWeight: 400 }}>La plateforme en un coup d’œil.</span>
+              {t('Bonjour, {name}.', { name })}<br />
+              <span className="muted" style={{ fontWeight: 400 }}>{t('La plateforme en un coup d’œil.')}</span>
             </h1>
           </div>
           <ExportButton records={records} emailOf={emailOf} ghost />
         </div>
 
         {error && (
-          <Banner tone="risk" title="Données indisponibles" className="err-banner-inline">
-            {error}
+          <Banner tone="risk" title={t('Données indisponibles')} className="err-banner-inline">
+            {t(error)}
           </Banner>
         )}
 
         {loading ? (
-          <p className="muted">Chargement des indicateurs…</p>
+          <p className="muted">{t('Chargement des indicateurs…')}</p>
         ) : (
           <>
             <div className="kpis">
@@ -107,20 +110,20 @@ export default function AdminDashboardPage() {
             <Reveal as="article" className="card" style={{ marginTop: '1.25rem' }}>
               <div className="card-h">
                 <div>
-                  <h3 className="display">Répartition des scores</h3>
-                  <p>Part de chaque palier sur l’ensemble des prédictions.</p>
+                  <h3 className="display">{t('Répartition des scores')}</h3>
+                  <p>{t('Part de chaque palier sur l’ensemble des prédictions.')}</p>
                 </div>
               </div>
               {records.length > 0 ? (
                 <Distribution counts={stats.counts} total={records.length} />
               ) : (
-                <p className="muted">Aucune prédiction pour l’instant.</p>
+                <p className="muted">{t('Aucune prédiction pour l’instant.')}</p>
               )}
               <div className="row" style={{ marginTop: '.8rem', ['--g' as string]: '1.2rem' }}>
-                {TIERS.map((t) => (
-                  <span key={t.tone} className="tiny muted">
-                    <i style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: TONE_VARS[t.tone], marginRight: '.4rem' }} />
-                    {t.legend}
+                {TIERS.map((tier) => (
+                  <span key={tier.tone} className="tiny muted">
+                    <i style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: TONE_VARS[tier.tone], marginRight: '.4rem' }} />
+                    {t(tier.label)} {tier.bound}
                   </span>
                 ))}
               </div>
@@ -129,13 +132,13 @@ export default function AdminDashboardPage() {
             <Reveal as="article" className="card" style={{ marginTop: '1.25rem' }}>
               <div className="card-h">
                 <div>
-                  <h3 className="display">Dernières prédictions</h3>
+                  <h3 className="display">{t('Dernières prédictions')}</h3>
                 </div>
                 <Link className="link tiny" href="/predictions">
-                  Tout voir
+                  {t('Tout voir')}
                 </Link>
               </div>
-              <PredictionsTable records={records.slice(0, 5)} emailOf={emailOf} emptyText="Aucune prédiction pour l’instant." />
+              <PredictionsTable records={records.slice(0, 5)} emailOf={emailOf} emptyText={t('Aucune prédiction pour l’instant.')} />
             </Reveal>
           </>
         )}

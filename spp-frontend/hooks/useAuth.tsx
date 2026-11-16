@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useT, type TFunction } from '@/lib/i18n';
 import type {
   AuthResult,
   AuthUser,
@@ -53,15 +54,16 @@ type AuthContextValue = AuthState & {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const INVALID_CREDENTIALS = 'E-mail ou mot de passe incorrect.';
-const NOT_CONFIGURED = 'Supabase non configuré.';
-
-function frenchAuthError(message: string | undefined, fallback: string): string {
-  if (!message) return fallback;
-  if (/invalid login credentials/i.test(message)) return INVALID_CREDENTIALS;
-  if (/already registered|already exists/i.test(message)) return 'Un compte existe déjà avec cet e-mail.';
-  if (/email not confirmed/i.test(message)) return 'Confirmez votre e-mail avant de vous connecter.';
-  if (/rate limit/i.test(message)) return 'Trop de tentatives. Réessayez dans quelques minutes.';
+// Supabase answers in English: known messages are mapped to a translated one,
+// anything else is shown as-is.
+function authError(t: TFunction, message: string | undefined, fallback: string): string {
+  if (!message) return t(fallback);
+  if (/invalid login credentials/i.test(message)) return t('E-mail ou mot de passe incorrect.');
+  if (/already registered|already exists/i.test(message)) return t('Un compte existe déjà avec cet e-mail.');
+  if (/email not confirmed/i.test(message)) return t('Confirmez votre e-mail avant de vous connecter.');
+  if (/rate limit/i.test(message)) return t('Trop de tentatives. Réessayez dans quelques minutes.');
+  if (/failed to fetch|networkerror|load failed/i.test(message)) return t('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.');
+  if (/password should be at least|weak password/i.test(message)) return t('Mot de passe trop faible. Utilisez au moins 8 caractères.');
   return message;
 }
 
@@ -71,6 +73,7 @@ function frenchAuthError(message: string | undefined, fallback: string): string 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, token: null, loading: true });
   const loggingOut = useRef(false);
+  const t = useT();
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -95,44 +98,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async ({ email, password }: LoginCredentials): Promise<AuthResult> => {
-    if (!supabase) return { ok: false, error: NOT_CONFIGURED };
+    if (!supabase) return { ok: false, error: t('Supabase non configuré.') };
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.session) {
-      return { ok: false, error: frenchAuthError(error?.message, 'Connexion impossible.') };
+      return { ok: false, error: authError(t, error?.message, 'Connexion impossible.') };
     }
     setState(stateFromSession(data.session));
     return { ok: true };
-  }, []);
+  }, [t]);
 
   const register = useCallback(async ({ email, password }: LoginCredentials): Promise<RegisterResult> => {
-    if (!supabase) return { status: 'error', error: NOT_CONFIGURED };
+    if (!supabase) return { status: 'error', error: t('Supabase non configuré.') };
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      return { status: 'error', error: frenchAuthError(error.message, 'Inscription impossible.') };
+      return { status: 'error', error: authError(t, error.message, 'Inscription impossible.') };
     }
     if (!data.session) return { status: 'confirm' };
     setState(stateFromSession(data.session));
     return { status: 'session' };
-  }, []);
+  }, [t]);
 
   const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
-    if (!supabase) return { ok: false, error: NOT_CONFIGURED };
+    if (!supabase) return { ok: false, error: t('Supabase non configuré.') };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error && /rate limit/i.test(error.message)) {
-      return { ok: false, error: frenchAuthError(error.message, 'Envoi impossible.') };
+      return { ok: false, error: authError(t, error.message, 'Envoi impossible.') };
     }
     // Same answer whether or not the address has an account: no user enumeration.
     return { ok: true };
-  }, []);
+  }, [t]);
 
   const updatePassword = useCallback(async (password: string): Promise<AuthResult> => {
-    if (!supabase) return { ok: false, error: NOT_CONFIGURED };
+    if (!supabase) return { ok: false, error: t('Supabase non configuré.') };
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) return { ok: false, error: frenchAuthError(error.message, 'Mise à jour impossible.') };
+    if (error) return { ok: false, error: authError(t, error.message, 'Mise à jour impossible.') };
     return { ok: true };
-  }, []);
+  }, [t]);
 
   // Lets route guards tell a deliberate sign-out (go home) from an expired or
   // missing session (go to the login page and come back after).

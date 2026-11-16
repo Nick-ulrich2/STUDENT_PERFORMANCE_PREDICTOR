@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRecommendation } from '@/hooks/useRecommendation';
 import { tween, EASE } from '@/lib/motion';
 import { formatNumber } from '@/lib/format';
+import { useI18n } from '@/lib/i18n';
 import type { PredictionOutput } from '@/types/prediction';
 
 const wordCount = (text: string) => text.trim().split(/\s+/).length;
@@ -13,6 +14,7 @@ const wordCount = (text: string) => text.trim().split(/\s+/).length;
 // The LLM only ever receives the already-computed prediction (see
 // POST /predict/recommendation): it explains the score, it never changes it.
 export function RecoCard({ output }: { output: PredictionOutput }) {
+  const { t, locale } = useI18n();
   const { token } = useAuth();
   const { loading, error, recommendation, fetchRecommendation } = useRecommendation(token);
   const [typed, setTyped] = useState(0);
@@ -36,9 +38,9 @@ export function RecoCard({ output }: { output: PredictionOutput }) {
     if (!recommendation) return;
     const elapsed = (performance.now() - startedAt.current) / 1000;
     const total = recommendation.length;
-    const t = tween(Math.min(4200, total * 26), (p) => setTyped(Math.round(total * p)), { ease: EASE.linear });
-    t.done.then(() => setSeconds(elapsed));
-    return () => t.cancel();
+    const anim = tween(Math.min(4200, total * 26), (p) => setTyped(Math.round(total * p)), { ease: EASE.linear });
+    anim.done.then(() => setSeconds(elapsed));
+    return () => anim.cancel();
   }, [recommendation]);
 
   const typing = recommendation !== null && typed < recommendation.length;
@@ -47,9 +49,9 @@ export function RecoCard({ output }: { output: PredictionOutput }) {
     <article className="reco" aria-live="polite">
       <div className="by">
         <span className="pill ink">
-          <Sparkles size={14} aria-hidden="true" /> Conseil
+          <Sparkles size={14} aria-hidden="true" /> {t('Conseil')}
         </span>
-        <span className="tiny muted">écrit par l’assistant IA</span>
+        <span className="tiny muted">{t('écrit par l’assistant IA')}</span>
       </div>
 
       <div className="hand" id="reco-body">
@@ -67,12 +69,12 @@ export function RecoCard({ output }: { output: PredictionOutput }) {
                 <AlertTriangle size={20} aria-hidden="true" />
               </span>
               <div>
-                <b>Le conseil est indisponible</b>
-                Le service d’explication ne répond pas ou n’est pas configuré. <u>Votre score n’est pas affecté.</u>
+                <b>{t('Le conseil est indisponible')}</b>
+                {t('Le service d’explication ne répond pas ou n’est pas configuré.')} <u>{t('Votre score n’est pas affecté.')}</u>
               </div>
             </div>
             <button type="button" className="btn sm" style={{ marginTop: '.8rem', fontFamily: 'var(--f-body)' }} onClick={send}>
-              Réessayer
+              {t('Réessayer')}
             </button>
           </>
         )}
@@ -87,8 +89,8 @@ export function RecoCard({ output }: { output: PredictionOutput }) {
       <div className="row" style={{ marginTop: '1rem', ['--g' as string]: '.5rem' }}>
         {recommendation && !typing && (
           <>
-            <span className="pill">{wordCount(recommendation)} mots</span>
-            {seconds !== null && <span className="pill">généré en {formatNumber(seconds, 1)} s</span>}
+            <span className="pill">{wordCount(recommendation)} {t('mots')}</span>
+            {seconds !== null && <span className="pill">{t('généré en {seconds} s', { seconds: formatNumber(seconds, 1, locale) })}</span>}
           </>
         )}
       </div>

@@ -32,6 +32,33 @@ HUMAN_LABELS = {
     "Parental_Involvement": "l'implication parentale",
 }
 
+HUMAN_LABELS_EN = {
+    "Attendance": "attendance",
+    "Hours_Studied": "study hours",
+    "Previous_Scores": "the previous score",
+    "Tutoring_Sessions": "tutoring sessions",
+    "Access_to_Resources": "access to resources",
+    "Parental_Involvement": "parental involvement",
+}
+
+SYSTEM_PROMPT_EN = (
+    "You are a teaching assistant for Student Performance Predictor (SPP), an "
+    "application that helps students understand the habits linked to their "
+    "academic performance. A machine learning model (Ridge regression) has just "
+    "produced a predicted exam score. Your role is to explain this result and "
+    "suggest one concrete next step, never a diagnosis.\n\n"
+    "Strict rules:\n"
+    "- Never present this prediction as a diagnosis, an official grade or a "
+    "guarantee of future results: it is one indicator among others, to be "
+    "treated with humility.\n"
+    "- Do not invent any data that is not provided in the user message.\n"
+    "- Base your suggestion(s) only on the variables below the recommended "
+    "threshold if the list is not empty; otherwise, encourage keeping the "
+    "current good habits.\n"
+    "- Answer in English only, in a kind and concrete tone.\n"
+    "- No title, no bullet list, no bold: a single paragraph of at most 60 words."
+)
+
 SYSTEM_PROMPT = (
     "Tu es un assistant pédagogique pour Student Performance Predictor (SPP), une "
     "application qui aide des étudiants à comprendre les habitudes liées à leur "
@@ -54,6 +81,29 @@ SYSTEM_PROMPT = (
 
 class RecommendationError(Exception):
     """Raised when a recommendation could not be generated (config, network, or upstream error)."""
+
+
+def _build_user_prompt_en(
+    predicted_score: float,
+    top_features: dict[str, float],
+    below_threshold: list[str],
+) -> str:
+    features_text = ", ".join(
+        f"{HUMAN_LABELS_EN.get(name, name)} ({coef:+.3f})"
+        for name, coef in top_features.items()
+    )
+    if below_threshold:
+        below_text = ", ".join(HUMAN_LABELS_EN.get(name, name) for name in below_threshold)
+        below_line = f"Variables below the recommended threshold: {below_text}."
+    else:
+        below_line = "No variable below the recommended threshold."
+
+    return (
+        f"Predicted score: {predicted_score:.1f}/100.\n"
+        f"Most influential variables according to the model (coefficient, sign and "
+        f"magnitude): {features_text}.\n"
+        f"{below_line}"
+    )
 
 
 def _build_user_prompt(
@@ -83,6 +133,7 @@ def generate_recommendation(
     predicted_score: float,
     top_features: dict[str, float],
     below_threshold: list[str],
+    language: str = "fr",
 ) -> str:
     api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
@@ -91,14 +142,18 @@ def generate_recommendation(
             "recommandations (clé gratuite sur console.groq.com/keys)."
         )
 
+    english = language == "en"
+    system_prompt = SYSTEM_PROMPT_EN if english else SYSTEM_PROMPT
+    build_prompt = _build_user_prompt_en if english else _build_user_prompt
+
     model = os.getenv("GROQ_MODEL", DEFAULT_MODEL)
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
-                "content": _build_user_prompt(predicted_score, top_features, below_threshold),
+                "content": build_prompt(predicted_score, top_features, below_threshold),
             },
         ],
         "temperature": 0.4,

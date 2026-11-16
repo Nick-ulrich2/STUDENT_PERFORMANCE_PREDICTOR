@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useInView } from '@/hooks/useInView';
 import { tween } from '@/lib/motion';
 import { formatNumber } from '@/lib/format';
+import { useI18n } from '@/lib/i18n';
 
 type SparkProps = { values: number[]; height?: number };
 
 export function Spark({ values, height = 90 }: SparkProps) {
   const [ref, inView] = useInView<SVGSVGElement>(0.25);
   const [offset, setOffset] = useState(1);
+  const { t, locale } = useI18n();
 
   useEffect(() => {
     if (!inView) return;
@@ -34,7 +36,7 @@ export function Spark({ values, height = 90 }: SparkProps) {
       className="spark"
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={`Évolution des scores : ${values.map((v) => formatNumber(v, 1)).join(', ')}`}
+      aria-label={`${t('Évolution des scores')} : ${values.map((v) => formatNumber(v, 1, locale)).join(', ')}`}
     >
       <path d={`${line} L${last[0]} ${height} L${points[0][0]} ${height}Z`} fill="var(--mark)" opacity=".35" />
       <path d={line} pathLength={1} strokeDasharray={1} strokeDashoffset={offset} fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />

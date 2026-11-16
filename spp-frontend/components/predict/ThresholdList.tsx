@@ -1,5 +1,10 @@
+'use client';
+
 import { FEATURES, isBelowThreshold } from '@/lib/features';
+import { useT } from '@/lib/i18n';
+
 export function ThresholdList({ values }: { values: object }) {
+  const t = useT();
   const lookup = values as Record<string, unknown>;
   return (
     <div>
@@ -13,9 +18,9 @@ export function ThresholdList({ values }: { values: object }) {
             className="row"
             style={{ justifyContent: 'space-between', padding: '.45rem 0', borderBottom: '1px dashed var(--line-2)' }}
           >
-            <span style={{ fontSize: '.9rem' }}>{f.label}</span>
+            <span style={{ fontSize: '.9rem' }}>{t(f.label)}</span>
             <span className={`pill${value === null ? '' : low ? ' warn' : ' excellent'}`}>
-              {value === null ? 'seuil' : low ? 'sous' : 'ok'} · {f.threshold}
+              {value === null ? t('seuil') : low ? t('sous') : t('ok')} · {f.threshold}
               {f.unit === '%' ? ' %' : ''}
             </span>
           </div>

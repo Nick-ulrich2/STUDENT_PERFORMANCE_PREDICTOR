@@ -3,6 +3,8 @@
 import { BookOpen, Check, Pencil, Users } from 'lucide-react';
 import { formatDuration, formatTime, relativeDay } from '@/lib/format';
 import { durationMs } from '@/lib/streak';
+import { useI18n, type TFunction } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n/core';
 import type { ActivityRecord } from '@/types/activity';
 
 const TYPES = {
@@ -11,9 +13,9 @@ const TYPES = {
   attendance: { label: 'Présence', icon: Check },
 } as const;
 
-export function summary(a: ActivityRecord): string {
-  if (a.activity_type === 'attendance') return a.status === 'present' ? 'Présent·e' : 'Absent·e';
-  return a.ended_at ? formatDuration(durationMs(a)) : 'En cours';
+export function summary(a: ActivityRecord, t: TFunction, locale: Locale): string {
+  if (a.activity_type === 'attendance') return a.status === 'present' ? t('Présent·e') : t('Absent·e');
+  return a.ended_at ? formatDuration(durationMs(a), locale) : t('En cours');
 }
 
 type ActivityLogProps = {
@@ -22,9 +24,10 @@ type ActivityLogProps = {
 };
 
 export function ActivityLog({ activities, onCorrect }: ActivityLogProps) {
+  const { t, locale } = useI18n();
   const rows = activities.filter((a) => a.status !== 'corrected').slice(0, 8);
   if (rows.length === 0) {
-    return <p className="muted">Rien pour l’instant : démarrez une séance ou marquez votre présence.</p>;
+    return <p className="muted">{t('Rien pour l’instant : démarrez une séance ou marquez votre présence.')}</p>;
   }
   return (
     <div className="log">
@@ -40,20 +43,20 @@ export function ActivityLog({ activities, onCorrect }: ActivityLogProps) {
             </div>
             <div>
               <b>
-                {type.label} · {summary(a)}
+                {t(type.label)} · {summary(a, t, locale)}
               </b>{' '}
-              {a.corrected_from !== null && <span className="pill mark">corrigée</span>}
+              {a.corrected_from !== null && <span className="pill mark">{t('corrigée')}</span>}
               <div className="m">
-                {relativeDay(a.started_at)} · {formatTime(a.started_at)}
+                {relativeDay(a.started_at, locale)} · {formatTime(a.started_at, locale)}
               </div>
               {original && (
                 <div className="m corr-note">
-                  Entrée d’origine conservée : <s>{summary(original)}</s> · Motif : « {a.note} »
+                  {t('Entrée d’origine conservée :')} <s>{summary(original, t, locale)}</s> · {t('Motif :')} « {a.note} »
                 </div>
               )}
             </div>
             <button type="button" className="btn ghost sm" disabled={a.corrected_from !== null || inProgress} onClick={() => onCorrect(a)}>
-              <Pencil size={16} aria-hidden="true" /> Corriger
+              <Pencil size={16} aria-hidden="true" /> {t('Corriger')}
             </button>
           </div>
         );

@@ -1,7 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 import { LogoMark } from '@/components/ui/Logo';
+import { useT } from '@/lib/i18n';
 
 export function Footer() {
+  const t = useT();
   return (
     <footer className="foot">
       <div className="wrap cols">
@@ -11,27 +15,27 @@ export function Footer() {
             <span>SPP</span>
           </Link>
           <p style={{ maxWidth: '26rem' }}>
-            Student Performance Predictor. Projet académique réalisé par Ulrich Mvongo. L’estimation fournie est indicative.
+            {t('Student Performance Predictor. Projet académique réalisé par Ulrich Mvongo. L’estimation fournie est indicative.')}
           </p>
         </div>
         <div>
-          <b>Produit</b>
+          <b>{t('Produit')}</b>
           <p>
-            <Link href="/#how">Comment ça marche</Link>
+            <Link href="/#how">{t('Comment ça marche')}</Link>
             <br />
-            <Link href="/#faq">FAQ</Link>
+            <Link href="/#faq">{t('FAQ')}</Link>
             <br />
-            <Link href="/login">Connexion</Link>
+            <Link href="/login">{t('Connexion')}</Link>
           </p>
         </div>
         <div>
-          <b>Technique</b>
+          <b>{t('Technique')}</b>
           <p>
             Next.js · FastAPI
             <br />
             Supabase · Groq
             <br />
-            Hébergé sur Vercel et Render
+            {t('Hébergé sur Vercel et Render')}
           </p>
         </div>
       </div>

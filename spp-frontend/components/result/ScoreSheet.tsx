@@ -4,6 +4,7 @@ import { CountUp } from '@/components/ui/CountUp';
 import { PenCircle } from '@/components/ui/PenCircle';
 import { formatDate, formatNumber } from '@/lib/format';
 import { scoreTone } from '@/lib/scoreTone';
+import { useI18n } from '@/lib/i18n';
 
 const RMSE = 2.04;
 const TICKS: { at: number; align: 'start' | 'center' | 'end' }[] = [
@@ -20,14 +21,15 @@ type ScoreSheetProps = { score: number; at: number; copyNumber: number | null };
 // stamp drops, and the scale shows the model's typical error band.
 export function ScoreSheet({ score, at, copyNumber }: ScoreSheetProps) {
   const tone = scoreTone(score);
+  const { t, locale } = useI18n();
   return (
-    <article className={`copie paper-card ${tone.className}`} aria-label="Estimation de la note">
+    <article className={`copie paper-card ${tone.className}`} aria-label={t('Estimation de la note')}>
       <div className="head">
-        <span>Copie n° {copyNumber === null ? '—' : String(copyNumber).padStart(4, '0')}</span>
-        <span>{formatDate(at)}</span>
+        <span>{t('Copie n°')} {copyNumber === null ? '—' : String(copyNumber).padStart(4, '0')}</span>
+        <span>{formatDate(at, locale)}</span>
       </div>
       <p className="mono tiny muted" style={{ letterSpacing: '.1em' }}>
-        ESTIMATION DE VOTRE NOTE D’EXAMEN
+        {t('ESTIMATION DE VOTRE NOTE D’EXAMEN')}
       </p>
       <div className="score-spot">
         <PenCircle delay={1500} />
@@ -37,11 +39,11 @@ export function ScoreSheet({ score, at, copyNumber }: ScoreSheetProps) {
         </div>
       </div>
       <div style={{ minHeight: '3rem' }}>
-        <span className="tier-stamp drop">{tone.label}</span>
+        <span className="tier-stamp drop">{t(tone.label)}</span>
       </div>
       <div className="rangewrap">
         <div className="band-lbl" style={{ left: `${score}%` }}>
-          {formatNumber(score, 1)} ± 2
+          {formatNumber(score, 1, locale)} ± 2
         </div>
         <div className="rangebar" aria-hidden="true">
           <i />
@@ -51,21 +53,21 @@ export function ScoreSheet({ score, at, copyNumber }: ScoreSheetProps) {
         </div>
         <div className="band" style={{ left: `${Math.max(0, score - RMSE)}%`, width: `${RMSE * 2}%` }} />
         <div className="ticks" aria-hidden="true">
-          {TICKS.map((t) => (
+          {TICKS.map((tick) => (
             <span
-              key={t.at}
+              key={tick.at}
               style={{
-                left: `${t.at}%`,
-                transform: t.align === 'start' ? 'none' : t.align === 'end' ? 'translateX(-100%)' : 'translateX(-50%)',
+                left: `${tick.at}%`,
+                transform: tick.align === 'start' ? 'none' : tick.align === 'end' ? 'translateX(-100%)' : 'translateX(-50%)',
               }}
             >
-              {t.at}
+              {tick.at}
             </span>
           ))}
         </div>
       </div>
       <p className="muted tiny" style={{ marginTop: '1rem' }}>
-        La bande noire est la marge d’erreur typique du modèle (RMSE 2,04). Le résultat est une estimation, pas un verdict.
+        {t('La bande noire est la marge d’erreur typique du modèle (RMSE {rmse}). Le résultat est une estimation, pas un verdict.', { rmse: formatNumber(RMSE, 2, locale) })}
       </p>
     </article>
   );
