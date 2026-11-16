@@ -22,6 +22,43 @@ import type {
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8000';
 const API_BASE_URL = RAW_BASE.replace(/\/+$/, '');
 
+const RETRY_DELAYS_MS = [2_000, 5_000];
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+// While Render wakes up its edge answers 502/503/504 (or drops the connection):
+// the request never reached the API, so it is safe to try again shortly.
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt += 1) {
+    const canRetry = attempt < RETRY_DELAYS_MS.length && !init.signal?.aborted;
+    try {
+      const response = await fetch(url, init);
+      if (canRetry && RETRYABLE_STATUS.has(response.status)) {
+        await wait(RETRY_DELAYS_MS[attempt] ?? 0);
+        continue;
+      }
+      return response;
+    } catch (err) {
+      if (!canRetry || (err instanceof DOMException && err.name === 'AbortError')) throw err;
+      await wait(RETRY_DELAYS_MS[attempt] ?? 0);
+    }
+  }
+}
+
+// Fire-and-forget request that starts waking the API as soon as the site opens,
+// so the cold start overlaps with the time the visitor spends reading.
+export function warmUpApi(): void {
+  try {
+    const last = Number(sessionStorage.getItem('spp:warm') ?? 0);
+    if (Date.now() - last < 10 * 60_000) return;
+    sessionStorage.setItem('spp:warm', String(Date.now()));
+  } catch {
+    /* storage unavailable: just ping */
+  }
+  fetch(`${API_BASE_URL}/`, { mode: 'no-cors', cache: 'no-store' }).catch(() => undefined);
+}
+
 async function request<T>(
   path: string,
   init: RequestInit & RequestOptions,
@@ -37,7 +74,7 @@ async function request<T>(
 
   const endTracking = trackRequest();
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
       ...init,
       headers,
       signal: init.signal ?? null,

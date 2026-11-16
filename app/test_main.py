@@ -943,3 +943,30 @@ def test_english_recommendation_prompt_is_english():
     prompt = _build_user_prompt_en(61.5, {"Attendance": 0.8}, ["Attendance"])
     assert "Predicted score: 61.5/100" in prompt and "below the recommended threshold" in prompt
     assert "English only" in SYSTEM_PROMPT_EN
+
+
+def test_active_model_version_id_is_cached(monkeypatch):
+    from app import repository
+
+    calls = []
+
+    class FakeQuery:
+        def __getattr__(self, _):
+            return lambda *a, **k: self
+
+        def execute(self):
+            calls.append(1)
+
+            class R:
+                data = [{"id": 7}]
+
+            return R()
+
+    class FakeClient:
+        def table(self, _):
+            return FakeQuery()
+
+    repository._model_version_cache.clear()
+    assert repository._get_active_model_version_id(FakeClient(), "Ridge") == 7
+    assert repository._get_active_model_version_id(FakeClient(), "Ridge") == 7
+    assert len(calls) == 1

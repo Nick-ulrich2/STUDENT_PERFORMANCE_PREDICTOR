@@ -6,6 +6,7 @@ import { getT } from '@/lib/i18n/server';
 import { AuthProvider } from '@/hooks/useAuth';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ColdStartOverlay } from '@/components/system/ColdStartOverlay';
+import { ApiWarmup } from '@/components/system/ApiWarmup';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -96,6 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ToastProvider>
               <div className="app">{children}</div>
               <ColdStartOverlay />
+              <ApiWarmup />
             </ToastProvider>
           </AuthProvider>
         </I18nProvider>

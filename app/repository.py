@@ -1,3 +1,4 @@
+import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -9,7 +10,17 @@ def _parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+# The active model version changes only when an admin deploys a new model, so it
+# is cached for a few minutes: /predict then needs one database round trip
+# instead of two (the free tier makes each one cost 0.5-1.5 s).
+_MODEL_VERSION_TTL_SECONDS = 300.0
+_model_version_cache: dict[str, tuple[int, float]] = {}
+
+
 def _get_active_model_version_id(client: Any, model_name: str) -> int:
+    cached = _model_version_cache.get(model_name)
+    if cached and time.monotonic() < cached[1]:
+        return cached[0]
     response = (
         client.table("model_versions")
         .select("id")
@@ -20,7 +31,9 @@ def _get_active_model_version_id(client: Any, model_name: str) -> int:
     )
     if not response.data:
         raise RuntimeError(f"Aucune version active du modele {model_name!r} n'est disponible.")
-    return response.data[0]["id"]
+    version_id = response.data[0]["id"]
+    _model_version_cache[model_name] = (version_id, time.monotonic() + _MODEL_VERSION_TTL_SECONDS)
+    return version_id
 
 
 def create_prediction(

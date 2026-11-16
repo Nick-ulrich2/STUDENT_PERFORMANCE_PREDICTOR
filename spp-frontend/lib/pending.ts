@@ -1,7 +1,10 @@
 // Tracks API requests that are taking suspiciously long. The free hosting tier
 // puts the API to sleep after ~15 minutes; the first request then takes 30-60 s.
 // The overlay subscribes here so the wait is explained instead of looking frozen.
-const SLOW_AFTER_MS = 3500;
+// Normal calls take 1-4 s on the free tier (more when several run at once), so the
+// "server is waking up" screen only appears after 12 s: a real cold start lasts
+// 30-60 s. A lower value made it flash on ordinary requests.
+const SLOW_AFTER_MS = 12_000;
 
 let slowCount = 0;
 const listeners = new Set<() => void>();
