@@ -31,3 +31,5 @@ Claude outputs/
 # test credentials (local only)
 .logs/test-account.txt
 .logs/.tok
+
+.logs/*-account.txt
