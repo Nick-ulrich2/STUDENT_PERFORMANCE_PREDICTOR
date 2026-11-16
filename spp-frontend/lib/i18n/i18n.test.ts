@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { LOCALES, translate } from '@/lib/i18n/core';
+import { DEFAULT_LOCALE, LOCALES, translate } from '@/lib/i18n/core';
 import { en } from '@/lib/i18n/en';
 import { faqs } from '@/data/faqs';
 import { FEATURES, LEVELS_FR, SHORT_LABELS } from '@/lib/features';
@@ -49,6 +49,7 @@ function usedKeys(): Map<string, string> {
 describe('i18n', () => {
   it('supports French and English', () => {
     expect(LOCALES).toEqual(['fr', 'en']);
+    expect(DEFAULT_LOCALE).toBe('en');
   });
 
   it('finds the t() keys of the source (sanity check of the scanner)', () => {

@@ -7,17 +7,13 @@ import { en } from '@/lib/i18n/en';
 export type Locale = 'fr' | 'en';
 
 export const LOCALES: Locale[] = ['fr', 'en'];
-export const DEFAULT_LOCALE: Locale = 'fr';
+// The app opens in English; the visitor can switch to French with the FR | EN
+// switcher and the choice is remembered in a cookie.
+export const DEFAULT_LOCALE: Locale = 'en';
 export const LOCALE_COOKIE = 'spp-lang';
 
 export function isLocale(value: unknown): value is Locale {
   return value === 'fr' || value === 'en';
-}
-
-// First visit (no cookie yet): follow the browser's Accept-Language header.
-export function localeFromAcceptLanguage(header: string | null | undefined): Locale {
-  const first = (header ?? '').split(',')[0]?.trim().toLowerCase() ?? '';
-  return first.startsWith('en') ? 'en' : DEFAULT_LOCALE;
 }
 
 export function intlLocale(locale: Locale): string {
